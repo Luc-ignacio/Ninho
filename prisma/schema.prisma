@@ -1,0 +1,319 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ======================================================
+// ENUMS
+// ======================================================
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  INVESTMENT
+}
+
+enum CurrencyType {
+  BRL
+  AUD
+  USD
+}
+
+enum SpaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  CREDIT_CARD_PAYMENT
+}
+
+enum TransactionMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+  BANK_TRANSFER
+  BOLETO
+  CASH
+  OTHER
+}
+
+enum TransactionSource {
+  MANUAL
+  IMPORT
+}
+
+enum ImportType {
+  BANK_STATEMENT
+  CREDIT_CARD_STATEMENT
+}
+
+enum ImportStatus {
+  PENDING
+  COMPLETED
+}
+
+// ======================================================
+// SPACE
+// ======================================================
+
+model Space {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Members              SpaceMember[]
+  Accounts             Account[]
+  CreditCards          CreditCard[]
+  Categories           Category[]
+  InstallmentPurchases InstallmentPurchase[]
+  Transactions         Transaction[]
+  Imports              Import[]
+}
+
+// ======================================================
+// PROFILE
+// ======================================================
+
+model Profile {
+  id        String   @id @db.Uuid // Same UUID from Supabase Auth.
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Spaces               SpaceMember[]
+  CreditCards          CreditCard[]
+  Transactions         Transaction[]
+  InstallmentPurchases InstallmentPurchase[]
+  Imports              Import[]
+  accounts             Account[]
+}
+
+// ======================================================
+// SPACE MEMBERS
+// ======================================================
+
+model SpaceMember {
+  id        String    @id @default(uuid()) @db.Uuid
+  spaceId   String    @db.Uuid
+  profileId String    @db.Uuid
+  role      SpaceRole @default(MEMBER)
+  joinedAt  DateTime  @default(now())
+
+  Space   Space   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([spaceId, profileId])
+  @@index([profileId])
+}
+
+// ======================================================
+// ACCOUNTS
+// ======================================================
+
+model Account {
+  id        String       @id @default(uuid()) @db.Uuid
+  spaceId   String       @db.Uuid
+  profileId String?      @db.Uuid
+  name      String
+  type      AccountType  @default(CHECKING)
+  currency  CurrencyType @default(BRL)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  Space                Space                    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Profile              Profile?                 @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  OriginAccount        Transaction[]            @relation("OriginAccount")
+  DestinationAccount   Transaction[]            @relation("DestinationAccount")
+  BalanceSnapshots     AccountBalanceSnapshot[]
+  Imports              Import[]
+  InstallmentPurchases InstallmentPurchase[]
+
+  @@index([spaceId])
+}
+
+// ======================================================
+// ACCOUNT BALANCE HISTORY
+// ======================================================
+
+model AccountBalanceSnapshot {
+  id        String   @id @default(uuid()) @db.Uuid
+  accountId String   @db.Uuid
+  date      DateTime @db.Date
+  balance   Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  Account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, date])
+  @@index([date])
+}
+
+// ======================================================
+// CREDIT CARDS
+// ======================================================
+
+model CreditCard {
+  id         String   @id @default(uuid()) @db.Uuid
+  spaceId    String   @db.Uuid
+  holderId   String?  @db.Uuid
+  name       String
+  lastFour   String?
+  closingDay Int?
+  dueDay     Int?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  Space                Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Holder               Profile?              @relation(fields: [holderId], references: [id], onDelete: SetNull)
+  Transactions         Transaction[]
+  InstallmentPurchases InstallmentPurchase[]
+  Imports              Import[]
+
+  @@index([spaceId])
+  @@index([holderId])
+}
+
+// ======================================================
+// CATEGORIES
+// ======================================================
+
+model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  spaceId   String   @db.Uuid
+  name      String
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Transactions Transaction[]
+
+  @@unique([spaceId, name])
+  @@index([spaceId])
+}
+
+// ======================================================
+// INSTALLMENT PURCHASES
+// ======================================================
+
+model InstallmentPurchase {
+  id                String   @id @default(uuid()) @db.Uuid
+  spaceId           String   @db.Uuid
+  accountId         String?  @db.Uuid
+  profileId         String?  @db.Uuid
+  creditCardId      String?  @db.Uuid
+  description       String
+  purchaseDate      DateTime @db.Date
+  totalAmount       Decimal  @db.Decimal(14, 2)
+  totalInstallments Int
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  Space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Account      Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  Profile      Profile?      @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  CreditCard   CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  Transactions Transaction[]
+
+  @@index([spaceId])
+  @@index([accountId])
+  @@index([profileId])
+  @@index([creditCardId])
+}
+
+// ======================================================
+// IMPORTS
+// ======================================================
+
+model Import {
+  id             String       @id @default(uuid()) @db.Uuid
+  spaceId        String       @db.Uuid
+  importedBy     String?      @db.Uuid
+  accountId      String?      @db.Uuid
+  creditCardId   String?      @db.Uuid
+  fileName       String
+  storagePath    String?
+  type           ImportType
+  status         ImportStatus @default(PENDING)
+  referenceMonth DateTime?    @db.Date
+  createdAt      DateTime     @default(now())
+  completedAt    DateTime?
+
+  Space        Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  ImportedBy   Profile?      @relation(fields: [importedBy], references: [id], onDelete: SetNull)
+  Account      Account?      @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  CreditCard   CreditCard?   @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+  Transactions Transaction[]
+
+  @@index([spaceId])
+  @@index([importedBy])
+  @@index([accountId])
+  @@index([creditCardId])
+}
+
+// ======================================================
+// TRANSACTIONS
+// ======================================================
+
+model Transaction {
+  id                    String            @id @default(uuid()) @db.Uuid
+  spaceId               String            @db.Uuid
+  date                  DateTime          @db.Date
+  description           String
+  amount                Decimal           @db.Decimal(14, 2)
+  type                  TransactionType
+  method                TransactionMethod
+  profileId             String?           @db.Uuid
+  creditCardId          String?           @db.Uuid
+  originAccountId       String?           @db.Uuid
+  destinationAccountId  String?           @db.Uuid
+  categoryId            String?           @db.Uuid
+  installmentPurchaseId String?           @db.Uuid
+  installmentNumber     Int?
+  installmentTotal      Int?
+  importId              String?           @db.Uuid
+  source                TransactionSource @default(MANUAL)
+  hashId                String? // Avoids importing duplicate transaction.
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  Space               Space                @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  Profile             Profile?             @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  OriginAccount       Account?             @relation("OriginAccount", fields: [originAccountId], references: [id], onDelete: SetNull)
+  DestinationAccount  Account?             @relation("DestinationAccount", fields: [destinationAccountId], references: [id], onDelete: SetNull)
+  Category            Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  InstallmentPurchase InstallmentPurchase? @relation(fields: [installmentPurchaseId], references: [id], onDelete: SetNull)
+  Import              Import?              @relation(fields: [importId], references: [id], onDelete: SetNull)
+  CreditCard          CreditCard?          @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
+
+  @@unique([originAccountId, hashId])
+  @@unique([destinationAccountId, hashId])
+  @@index([spaceId, date])
+  @@index([spaceId])
+  @@index([date])
+  @@index([categoryId])
+  @@index([profileId])
+  @@index([originAccountId])
+  @@index([destinationAccountId])
+  @@index([creditCardId])
+  @@index([importId])
+  @@index([installmentPurchaseId])
+}
