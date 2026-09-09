@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -17,7 +16,6 @@ import { Label } from "@/components/ui/label";
 import { Add01Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
-import { addSpaceMember } from "@/app/actions/space-member";
 import { notFound, useRouter } from "next/navigation";
 import { ActiveSpace } from "@/lib/space/get-active-space";
 import { addSpaceCategory } from "@/app/actions/category";
@@ -69,7 +67,7 @@ export function AddSpaceCategory({ space }: { space: ActiveSpace }) {
         Adicionar Categoria
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader className="space-y-1">

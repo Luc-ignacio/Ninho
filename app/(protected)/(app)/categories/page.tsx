@@ -3,7 +3,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getActiveSpace } from "@/lib/space/get-active-space";
-import { getSpaceCategories } from "@/lib/space/queries";
 import { Tag01Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { notFound } from "next/navigation";
@@ -15,8 +14,6 @@ export default async function CategoriesPage() {
   if (!space) {
     notFound();
   }
-
-  const categories = await getSpaceCategories(space.id);
 
   return (
     <div className="flex flex-col w-full rounded-2xl p-6 gap-6 pb-12">
@@ -34,8 +31,8 @@ export default async function CategoriesPage() {
         </div>
       </div>
 
-      {categories.length ? (
-        <DataTable columns={columns} data={categories} />
+      {space.Categories.length ? (
+        <DataTable columns={columns} data={space.Categories} />
       ) : (
         <Card className="min-h-40">
           <CardContent className="flex flex-col flex-1 items-center justify-center space-y-4">

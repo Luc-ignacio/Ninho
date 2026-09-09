@@ -28,7 +28,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CreateSpace } from "./create-space";
 import { useRouter } from "next/navigation";
-import { Button, buttonVariants } from "../ui/button";
+import { Button } from "../ui/button";
 
 interface Props {
   spaces: ProfileSpace[];

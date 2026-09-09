@@ -15,6 +15,5 @@
   },
   "[jsx-tags]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "cSpell.words": ["Hugeicons"]
+  }
 }

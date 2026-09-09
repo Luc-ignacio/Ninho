@@ -144,6 +144,7 @@ model Account {
   BalanceSnapshots     AccountBalanceSnapshot[]
   Imports              Import[]
   InstallmentPurchases InstallmentPurchase[]
+  CreditCards          CreditCard[]
 
   @@index([spaceId])
 }
@@ -170,25 +171,28 @@ model AccountBalanceSnapshot {
 // ======================================================
 
 model CreditCard {
-  id         String   @id @default(uuid()) @db.Uuid
-  spaceId    String   @db.Uuid
-  holderId   String?  @db.Uuid
-  name       String
-  lastFour   String?
-  closingDay Int?
-  dueDay     Int?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  spaceId     String   @db.Uuid
+  holderId    String?  @db.Uuid
+  accountId   String?  @db.Uuid
+  name        String
+  lastFour    String?
+  creditLimit Decimal? @db.Decimal(14, 2)
+  dueDay      Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   Space                Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   Holder               Profile?              @relation(fields: [holderId], references: [id], onDelete: SetNull)
+  Account              Account?              @relation(fields: [accountId], references: [id], onDelete: SetNull)
   Transactions         Transaction[]
   InstallmentPurchases InstallmentPurchase[]
   Imports              Import[]
 
   @@index([spaceId])
   @@index([holderId])
+  @@index([accountId])
 }
 
 // ======================================================
@@ -300,7 +304,7 @@ model Transaction {
   OriginAccount       Account?             @relation("OriginAccount", fields: [originAccountId], references: [id], onDelete: SetNull)
   DestinationAccount  Account?             @relation("DestinationAccount", fields: [destinationAccountId], references: [id], onDelete: SetNull)
   Category            Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  InstallmentPurchase InstallmentPurchase? @relation(fields: [installmentPurchaseId], references: [id], onDelete: SetNull)
+  InstallmentPurchase InstallmentPurchase? @relation(fields: [installmentPurchaseId], references: [id], onDelete: Cascade)
   Import              Import?              @relation(fields: [importId], references: [id], onDelete: SetNull)
   CreditCard          CreditCard?          @relation(fields: [creditCardId], references: [id], onDelete: SetNull)
 

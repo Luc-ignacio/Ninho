@@ -85,7 +85,7 @@ export function AddSpaceMember({ space }: { space: ActiveSpace }) {
         Adicionar Membro
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader className="space-y-1">

@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "../generated/prisma/client";
 
 const templateCategories = [
+  "Renda",
   "Moradia",
   "Mercado",
   "Restaurantes",

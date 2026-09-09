@@ -43,6 +43,8 @@ import {
 } from "../ui/input-group";
 import { addSpaceAccount } from "@/app/actions/account";
 import { ActiveSpace } from "@/lib/space/get-active-space";
+import { formatCents, parseCurrencyInput, todayYmd } from "@/lib/utils";
+import SelectSpaceMember from "./select-space-member";
 
 const accountOptions = [
   {
@@ -88,12 +90,16 @@ const currencyOptions = [
 
 export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
   const router = useRouter();
+  const defaultProfileId =
+    space?.Members.find((member) => member.role === "OWNER")?.Profile.id ??
+    null;
+
   const [open, setOpen] = useState(false);
   const [accountName, setAccountName] = useState<string>("");
   const [accountType, setAccountType] = useState<AccountType>("CHECKING");
-  const [profileId, setProfileId] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(defaultProfileId);
   const [currency, setCurrency] = useState<CurrencyType>("BRL");
-  const [balance, setBalance] = useState<number>(0);
+  const [balanceCents, setBalanceCents] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -104,19 +110,11 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
   const resetForm = () => {
     setAccountName("");
     setAccountType("CHECKING");
-    setProfileId(null);
+    setProfileId(defaultProfileId);
     setCurrency("BRL");
-    setBalance(0);
+    setBalanceCents(0);
     setError(null);
   };
-
-  const formattedBalance = new Intl.NumberFormat(
-    currency === "BRL" ? "pt-BR" : currency === "AUD" ? "en-AU" : "en-US",
-    {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    },
-  ).format(balance / 100);
 
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
@@ -126,11 +124,13 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
     try {
       const accountData = {
         spaceId: space.id,
-        profileId: null,
+        profileId: profileId,
         name: accountName,
         type: accountType,
         currency: currency,
-        balance: balance,
+        balanceCents: balanceCents,
+        // Data local do usuário: o servidor não consegue derivar o fuso dele.
+        openingDate: todayYmd(),
       };
       const spaceAccount = await addSpaceAccount(accountData);
 
@@ -157,7 +157,7 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
         Adicionar Conta
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader>
@@ -230,6 +230,13 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                 />
               </Field>
 
+              <SelectSpaceMember
+                members={space.Members}
+                inputLabel="Titular"
+                value={profileId}
+                onValueChange={setProfileId}
+              />
+
               <Field className="flex flex-col gap-3">
                 <Label htmlFor="account-type">Moeda</Label>
                 <RadioGroup
@@ -289,13 +296,18 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                     </InputGroupText>
                   </InputGroupAddon>
                   <InputGroupInput
-                    placeholder="0.00"
-                    value={formattedBalance}
-                    onChange={(e) => {
-                      const digits = e.target.value.replace(/\D/g, "");
-
-                      setBalance(Number(digits));
-                    }}
+                    id="balance"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder={formatCents(0, currency)}
+                    value={
+                      balanceCents === 0
+                        ? ""
+                        : formatCents(balanceCents, currency)
+                    }
+                    onChange={(e) =>
+                      setBalanceCents(parseCurrencyInput(e.target.value))
+                    }
                   />
                   <InputGroupAddon align="inline-end">
                     <InputGroupText>

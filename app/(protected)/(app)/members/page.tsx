@@ -2,7 +2,6 @@ import { AddSpaceMember } from "@/components/space/add-member";
 import { RemoveSpaceMember } from "@/components/space/remove-member";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Item,
   ItemActions,
@@ -12,8 +11,6 @@ import {
 } from "@/components/ui/item";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getActiveSpace } from "@/lib/space/get-active-space";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { notFound } from "next/navigation";
 
 export default async function MembersPage() {
