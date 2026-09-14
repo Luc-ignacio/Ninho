@@ -204,8 +204,7 @@ async function getCreditCardUsageCents(cardIds: string[]) {
 
     usage.set(
       row.creditCardId,
-      usage.get(row.creditCardId)! +
-        (row.type === "EXPENSE" ? cents : -cents),
+      usage.get(row.creditCardId)! + (row.type === "EXPENSE" ? cents : -cents),
     );
   }
 
@@ -460,15 +459,12 @@ export const getSpaceTransactions = cache(
       ...(creditCardId ? { creditCardId } : {}),
     };
 
-    const [rows, total] = await prisma.$transaction([
+    const [rows, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        // `date` tem granularidade de dia, então `createdAt` desempata.
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
         take,
         skip,
-        // `select` explícito (e não `include`) é o que impede um `Decimal` de
-        // vazar para o cliente através das relações.
         select: {
           id: true,
           date: true,
@@ -527,9 +523,6 @@ export const getSpaceTransactions = cache(
       transactions: rows.map(({ amount, date, ...transaction }) => ({
         ...transaction,
         amountCents: decimalToCents(amount),
-        // Seguro porque uma coluna `@db.Date` sempre volta como meia-noite UTC
-        // exata. A string evita que o cliente formate no fuso local e mostre o
-        // dia anterior.
         date: date.toISOString().slice(0, 10),
       })),
     };
