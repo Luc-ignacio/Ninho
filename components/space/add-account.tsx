@@ -35,15 +35,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { AccountType, CurrencyType } from "@/app/generated/prisma/client";
 import { notFound, useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-} from "../ui/input-group";
 import { addSpaceAccount } from "@/app/actions/account";
 import { ActiveSpace } from "@/lib/space/get-active-space";
-import { formatCents, parseCurrencyInput, todayYmd } from "@/lib/utils";
 import SelectSpaceMember from "./select-space-member";
 
 const accountOptions = [
@@ -99,7 +92,6 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
   const [accountType, setAccountType] = useState<AccountType>("CHECKING");
   const [profileId, setProfileId] = useState<string | null>(defaultProfileId);
   const [currency, setCurrency] = useState<CurrencyType>("BRL");
-  const [balanceCents, setBalanceCents] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,7 +104,6 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
     setAccountType("CHECKING");
     setProfileId(defaultProfileId);
     setCurrency("BRL");
-    setBalanceCents(0);
     setError(null);
   };
 
@@ -128,9 +119,6 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
         name: accountName,
         type: accountType,
         currency: currency,
-        balanceCents: balanceCents,
-        // Data local do usuário: o servidor não consegue derivar o fuso dele.
-        openingDate: todayYmd(),
       };
       const spaceAccount = await addSpaceAccount(accountData);
 
@@ -283,43 +271,6 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                 </RadioGroup>
               </Field>
 
-              <Field>
-                <Label htmlFor="name">Saldo Inicial</Label>
-                <InputGroup>
-                  <InputGroupAddon>
-                    <InputGroupText>
-                      {
-                        currencyOptions.find(
-                          (option) => option.value === currency,
-                        )?.symbol
-                      }
-                    </InputGroupText>
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="balance"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder={formatCents(0, currency)}
-                    value={
-                      balanceCents === 0
-                        ? ""
-                        : formatCents(balanceCents, currency)
-                    }
-                    onChange={(e) =>
-                      setBalanceCents(parseCurrencyInput(e.target.value))
-                    }
-                  />
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupText>
-                      {
-                        currencyOptions.find(
-                          (option) => option.value === currency,
-                        )?.value
-                      }
-                    </InputGroupText>
-                  </InputGroupAddon>
-                </InputGroup>
-              </Field>
             </FieldGroup>
 
             {error && <p className="text-sm text-red-500">{error}</p>}

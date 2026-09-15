@@ -34,16 +34,18 @@ export function RemoveSpaceMember({
   }
 
   const router = useRouter();
+  const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
   const handleDelete = () =>
     startTransition(async () => {
       await removeSpaceMember(spaceMember.id);
+      setOpen(false);
       router.refresh();
     });
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={
           <Button size="icon-sm" variant="ghost-destructive">

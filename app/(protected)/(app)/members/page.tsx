@@ -33,7 +33,7 @@ export default async function MembersPage() {
   };
 
   return (
-    <div className="flex flex-col w-full rounded-2xl p-6 gap-6 pb-12">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
       <div className="flex w-full items-center justify-between">
         <div className="flex flex-col">
           <span className="text-xl font-medium">Membros</span>

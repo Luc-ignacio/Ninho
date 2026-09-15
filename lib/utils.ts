@@ -1,6 +1,7 @@
 import {
   AccountType,
   CurrencyType,
+  ImportType,
   TransactionMethod,
   TransactionType,
 } from "@/app/generated/prisma/enums";
@@ -80,6 +81,13 @@ export function addMonthsUtc(date: Date, months: number) {
   ).getUTCDate();
 
   target.setUTCDate(Math.min(day, lastDay));
+
+  return target;
+}
+
+export function addDaysUtc(date: Date, days: number) {
+  const target = new Date(date.getTime());
+  target.setUTCDate(target.getUTCDate() + days);
 
   return target;
 }
@@ -187,6 +195,11 @@ export const transactionTypeLabel: Record<TransactionType, string> = {
   EXPENSE: "Despesa",
   TRANSFER: "Transferência",
   CREDIT_CARD_PAYMENT: "Pagamento de fatura",
+};
+
+export const importTypeLabel: Record<ImportType, string> = {
+  BANK_STATEMENT: "Extrato",
+  CREDIT_CARD_STATEMENT: "Fatura",
 };
 
 export const transactionMethodLabel: Record<TransactionMethod, string> = {

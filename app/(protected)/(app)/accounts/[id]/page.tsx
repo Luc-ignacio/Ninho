@@ -1,8 +1,9 @@
+import { AdjustAccountBalance } from "@/components/space/adjust-account-balance";
 import { DeleteSpaceAccount } from "@/components/space/delete-account";
 import { AddSpaceTransaction } from "@/components/space/add-transaction";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Item,
   ItemContent,
@@ -13,7 +14,7 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { getSpaceAccountById, getSpaceTransactions } from "@/lib/space/queries";
-import { accountTypeLabel, formatCurrency } from "@/lib/utils";
+import { accountTypeLabel, formatCurrency, formatYmd } from "@/lib/utils";
 import { ArrowLeft02Icon, TransactionIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
@@ -45,8 +46,13 @@ export default async function AccountPage({
     10,
   );
 
+  // `@db.Date` à meia-noite UTC: `toYmd` usaria os getters locais e mostraria o
+  // dia anterior em BRT.
+  const balanceYmd =
+    account.BalanceSnapshots[0]?.date.toISOString().slice(0, 10) ?? null;
+
   return (
-    <div className="flex flex-col w-full rounded-2xl p-6 gap-6 pb-12">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
       <div>
         <div className="flex w-full items-center justify-between">
           <Link href="/accounts">
@@ -79,6 +85,16 @@ export default async function AccountPage({
               <span className="text-2xl font-semibold">
                 {formatCurrency(account.balanceCents, account.currency)}
               </span>
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <ItemDescription>
+                  {balanceYmd
+                    ? `Registrado em ${formatYmd(balanceYmd)} e somado aos lançamentos posteriores`
+                    : "Somado a partir de todos os lançamentos da conta"}
+                </ItemDescription>
+
+                <AdjustAccountBalance account={account} />
+              </div>
             </ItemContent>
           </Item>
 
@@ -121,28 +137,17 @@ export default async function AccountPage({
           {transactions.length > 0 ? (
             <DataTable columns={columns} data={transactions} />
           ) : (
-            <Card className="min-h-40">
-              <CardContent className="flex flex-col flex-1 items-center justify-center space-y-4">
-                <div className="p-4 bg-accent rounded-xl">
-                  <HugeiconsIcon icon={TransactionIcon} />
-                </div>
-                <div className="flex flex-col items-center">
-                  <span className="font-bold text-base">
-                    Nenhuma transação ainda
-                  </span>
-
-                  <span className="text-muted-foreground">
-                    Adicione sua primeira transação ou importe um extrato para
-                    começar.
-                  </span>
-                </div>
-
+            <EmptyState
+              icon={TransactionIcon}
+              title="Nenhuma transação ainda"
+              description="Adicione sua primeira transação ou importe um extrato para começar."
+              action={
                 <AddSpaceTransaction
                   space={space}
                   defaultAccountId={account.id}
                 />
-              </CardContent>
-            </Card>
+              }
+            />
           )}
         </div>
       </div>

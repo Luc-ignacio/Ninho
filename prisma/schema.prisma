@@ -310,6 +310,7 @@ model Transaction {
 
   @@unique([originAccountId, hashId])
   @@unique([destinationAccountId, hashId])
+  @@unique([creditCardId, hashId])
   @@index([spaceId, date])
   @@index([spaceId])
   @@index([date])

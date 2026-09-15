@@ -35,16 +35,18 @@ function TransactionActions({
   transaction: SpaceTransaction;
 }) {
   const router = useRouter();
+  const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
   const handleDelete = () =>
     startTransition(async () => {
       await deleteSpaceTransaction(transaction.id);
+      setOpen(false);
       router.refresh();
     });
 
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger
         render={
           <Button variant="ghost-destructive" size="icon-sm">

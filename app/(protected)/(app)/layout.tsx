@@ -21,7 +21,9 @@ export default async function AppLayout({
           activeSpaceId={activeSpace?.id}
         />
         <SidebarInset>
-          <div className="relative flex flex-1 flex-col">{children}</div>
+          <div className="relative flex w-full min-w-0 flex-1 flex-col">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

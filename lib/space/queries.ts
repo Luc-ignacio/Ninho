@@ -1,8 +1,16 @@
 import { cache } from "react";
 
+import type { CurrencyType } from "@/app/generated/prisma/enums";
 import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import prisma from "@/lib/prisma";
-import { currentMonthRangeUtc, decimalToCents } from "@/lib/utils";
+import {
+  addDaysUtc,
+  currentMonthRangeUtc,
+  decimalToCents,
+  todayYmd,
+  toYmd,
+  ymdToUtcDate,
+} from "@/lib/utils";
 
 export type ProfileSpace = Awaited<
   ReturnType<typeof getSpacesByProfile>
@@ -39,9 +47,12 @@ interface AccountBalanceInput {
 }
 
 /**
- * Saldo derivado: o último snapshot vale como saldo de *abertura* da sua data,
- * somado às transações a partir dela (`>=`, para não descartar as transações
- * lançadas no mesmo dia em que a conta foi criada).
+ * Saldo derivado: o último snapshot vale como saldo de *fechamento* da sua data,
+ * somado só às transações posteriores a ela (`>`). Tudo que aconteceu até aquele
+ * dia já está embutido no valor observado — é essa convenção que deixa o saldo
+ * do extrato (`LEDGERBAL`/`DTASOF`) e o saldo registrado à mão significarem a
+ * mesma coisa. Conta sem nenhum snapshot soma tudo a partir do zero, que é o
+ * caso de quem acabou de criar a conta e vai construir o saldo importando.
  *
  * A direção vem só das FKs — `destinationAccountId` soma, `originAccountId`
  * subtrai — então nenhum tipo precisa de tratamento especial. Uma despesa no
@@ -62,7 +73,7 @@ async function getAccountBalancesCents(accounts: AccountBalanceInput[]) {
       where: {
         OR: accounts.map((a) => ({
           originAccountId: a.id,
-          ...(a.snapshotDate ? { date: { gte: a.snapshotDate } } : {}),
+          ...(a.snapshotDate ? { date: { gt: a.snapshotDate } } : {}),
         })),
       },
       _sum: { amount: true },
@@ -72,7 +83,7 @@ async function getAccountBalancesCents(accounts: AccountBalanceInput[]) {
       where: {
         OR: accounts.map((a) => ({
           destinationAccountId: a.id,
-          ...(a.snapshotDate ? { date: { gte: a.snapshotDate } } : {}),
+          ...(a.snapshotDate ? { date: { gt: a.snapshotDate } } : {}),
         })),
       },
       _sum: { amount: true },
@@ -112,8 +123,8 @@ interface AccountMonthFlowCents {
  * saldo derivado: uma transferência entre contas do espaço conta como saída numa
  * e entrada na outra, e uma despesa no cartão não aparece em nenhuma.
  *
- * O início da janela é `max(início do mês, data do snapshot)`: uma transação
- * anterior ao snapshot não entra no saldo (ela já está embutida nele), então
+ * O início da janela é `max(início do mês, dia seguinte ao snapshot)`: uma
+ * transação até o snapshot não entra no saldo (já está embutida nele), então
  * mostrá-la como movimento do mês faria o card exibir uma variação que o saldo
  * ao lado não acompanha. Como o corte volta a ser por conta, o `OR` de pares é
  * de novo o que resolve tudo num único groupBy.
@@ -129,13 +140,16 @@ async function getAccountMonthFlowsCents(
 
   if (accounts.length === 0) return flows;
 
-  const period = (account: AccountBalanceInput) => ({
-    gte:
-      account.snapshotDate && account.snapshotDate > start
-        ? account.snapshotDate
-        : start,
-    lt: end,
-  });
+  const period = (account: AccountBalanceInput) => {
+    const afterSnapshot = account.snapshotDate
+      ? addDaysUtc(account.snapshotDate, 1)
+      : null;
+
+    return {
+      gte: afterSnapshot && afterSnapshot > start ? afterSnapshot : start,
+      lt: end,
+    };
+  };
 
   const [outflows, inflows] = await Promise.all([
     prisma.transaction.groupBy({
@@ -271,6 +285,9 @@ export const getSpaceById = cache(async (id: string) => {
         },
       },
       Accounts: {
+        orderBy: {
+          name: "asc",
+        },
         include: {
           BalanceSnapshots: {
             orderBy: {
@@ -528,3 +545,403 @@ export const getSpaceTransactions = cache(
     };
   },
 );
+
+const CURRENCY_ORDER: CurrencyType[] = ["BRL", "USD", "AUD"];
+const TOP_SLICES = 8;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface DashboardSlice {
+  id: string | null;
+  name: string;
+  cents: number;
+  share: number;
+}
+
+export function sumBalancesByCurrency(
+  accounts: { currency: CurrencyType; balanceCents: number }[],
+) {
+  const totals = new Map<CurrencyType, number>();
+
+  for (const account of accounts) {
+    totals.set(
+      account.currency,
+      (totals.get(account.currency) ?? 0) + account.balanceCents,
+    );
+  }
+
+  return CURRENCY_ORDER.filter((currency) => totals.has(currency)).map(
+    (currency) => ({ currency, balanceCents: totals.get(currency)! }),
+  );
+}
+
+function resolveCurrency(
+  originAccountId: string | null,
+  destinationAccountId: string | null,
+  creditCardId: string | null,
+  accountCurrency: Map<string, CurrencyType>,
+  cardCurrency: Map<string, CurrencyType | null>,
+) {
+  if (originAccountId) return accountCurrency.get(originAccountId) ?? null;
+  if (destinationAccountId)
+    return accountCurrency.get(destinationAccountId) ?? null;
+  if (creditCardId) return cardCurrency.get(creditCardId) ?? null;
+
+  return null;
+}
+
+function addCents(
+  buckets: Map<CurrencyType, Map<string | null, number>>,
+  currency: CurrencyType,
+  key: string | null,
+  cents: number,
+) {
+  const bucket = buckets.get(currency) ?? new Map<string | null, number>();
+
+  bucket.set(key, (bucket.get(key) ?? 0) + cents);
+  buckets.set(currency, bucket);
+}
+
+function toSlices(
+  bucket: Map<string | null, number> | undefined,
+  nameFor: (id: string | null) => string,
+  totalCents: number,
+): DashboardSlice[] {
+  if (!bucket) return [];
+
+  const ranked = [...bucket.entries()]
+    .map(([id, cents]) => ({ id, name: nameFor(id), cents }))
+    .sort((a, b) => b.cents - a.cents || a.name.localeCompare(b.name, "pt-BR"));
+
+  const head = ranked.slice(0, TOP_SLICES);
+  const tail = ranked.slice(TOP_SLICES);
+
+  const slices = tail.length
+    ? [
+        ...head,
+        {
+          id: null,
+          name: "Outros",
+          cents: tail.reduce((sum, slice) => sum + slice.cents, 0),
+        },
+      ]
+    : head;
+
+  return slices.map((slice) => ({
+    ...slice,
+    share: totalCents === 0 ? 0 : slice.cents / totalCents,
+  }));
+}
+
+export const getSpaceDashboard = cache(
+  async (spaceId: string, monthStartYmd: string, monthEndYmd: string) => {
+    const start = ymdToUtcDate(monthStartYmd);
+    const end = ymdToUtcDate(monthEndYmd);
+
+    const period = { gte: start, lt: end };
+    const incomeWhere = { spaceId, type: "INCOME" as const, date: period };
+
+    const expenseWhere = { spaceId, type: "EXPENSE" as const, date: period };
+
+    const [
+      accounts,
+      cards,
+      categories,
+      profiles,
+      incomeRows,
+      categoryRows,
+      profileRows,
+      dailyRows,
+    ] = await Promise.all([
+      prisma.account.findMany({
+        where: { spaceId },
+        select: { id: true, currency: true },
+      }),
+      prisma.creditCard.findMany({
+        where: { spaceId },
+        select: { id: true, accountId: true },
+      }),
+      prisma.category.findMany({
+        where: { spaceId },
+        select: { id: true, name: true },
+      }),
+      prisma.profile.findMany({
+        where: { Transactions: { some: expenseWhere } },
+        select: { id: true, name: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["date", "destinationAccountId"],
+        where: incomeWhere,
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["categoryId", "originAccountId", "creditCardId"],
+        where: expenseWhere,
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["profileId", "originAccountId", "creditCardId"],
+        where: expenseWhere,
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["date", "originAccountId", "creditCardId"],
+        where: expenseWhere,
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const accountCurrency = new Map(
+      accounts.map((account) => [account.id, account.currency]),
+    );
+    const cardCurrency = new Map(
+      cards.map((card) => [
+        card.id,
+        card.accountId ? (accountCurrency.get(card.accountId) ?? null) : null,
+      ]),
+    );
+    const categoryName = new Map(
+      categories.map((category) => [category.id, category.name]),
+    );
+    const profileName = new Map(
+      profiles.map((profile) => [profile.id, profile.name]),
+    );
+
+    const incomeCents = new Map<CurrencyType, number>();
+    const expenseCents = new Map<CurrencyType, number>();
+    const byCategory = new Map<CurrencyType, Map<string | null, number>>();
+    const byProfile = new Map<CurrencyType, Map<string | null, number>>();
+    const byDay = new Map<CurrencyType, Map<string, number>>();
+
+    let unresolvedIncomeCents = 0;
+    let unresolvedExpenseCents = 0;
+    let lastExpenseYmd: string | null = null;
+
+    for (const row of incomeRows) {
+      const currency = resolveCurrency(
+        null,
+        row.destinationAccountId,
+        null,
+        accountCurrency,
+        cardCurrency,
+      );
+      const cents = decimalToCents(row._sum.amount);
+
+      if (!currency) {
+        unresolvedIncomeCents += cents;
+        continue;
+      }
+
+      incomeCents.set(currency, (incomeCents.get(currency) ?? 0) + cents);
+    }
+
+    for (const row of categoryRows) {
+      const currency = resolveCurrency(
+        row.originAccountId,
+        null,
+        row.creditCardId,
+        accountCurrency,
+        cardCurrency,
+      );
+      const cents = decimalToCents(row._sum.amount);
+
+      if (!currency) {
+        unresolvedExpenseCents += cents;
+        continue;
+      }
+
+      expenseCents.set(currency, (expenseCents.get(currency) ?? 0) + cents);
+      addCents(byCategory, currency, row.categoryId, cents);
+    }
+
+    for (const row of profileRows) {
+      const currency = resolveCurrency(
+        row.originAccountId,
+        null,
+        row.creditCardId,
+        accountCurrency,
+        cardCurrency,
+      );
+
+      if (!currency) continue;
+
+      addCents(byProfile, currency, row.profileId, decimalToCents(row._sum.amount));
+    }
+
+    for (const row of dailyRows) {
+      const ymd = row.date.toISOString().slice(0, 10);
+
+      if (!lastExpenseYmd || ymd > lastExpenseYmd) {
+        lastExpenseYmd = ymd;
+      }
+
+      const currency = resolveCurrency(
+        row.originAccountId,
+        null,
+        row.creditCardId,
+        accountCurrency,
+        cardCurrency,
+      );
+
+      if (!currency) continue;
+
+      const bucket = byDay.get(currency) ?? new Map<string, number>();
+
+      bucket.set(
+        ymd,
+        (bucket.get(ymd) ?? 0) + decimalToCents(row._sum.amount),
+      );
+      byDay.set(currency, bucket);
+    }
+
+    const lastDayOfMonth = new Date(end.getTime() - DAY_MS)
+      .toISOString()
+      .slice(0, 10);
+    const today = todayYmd();
+
+    let cutoffYmd = today > monthStartYmd ? today : monthStartYmd;
+
+    if (lastExpenseYmd && lastExpenseYmd > cutoffYmd) cutoffYmd = lastExpenseYmd;
+    if (cutoffYmd > lastDayOfMonth) cutoffYmd = lastDayOfMonth;
+
+    const days: string[] = [];
+
+    for (
+      let day = start;
+      day.toISOString().slice(0, 10) <= cutoffYmd;
+      day = new Date(day.getTime() + DAY_MS)
+    ) {
+      days.push(day.toISOString().slice(0, 10));
+    }
+
+    const accountCurrencies = new Set(accounts.map((account) => account.currency));
+
+    const currencies = CURRENCY_ORDER.filter(
+      (currency) =>
+        accountCurrencies.has(currency) ||
+        incomeCents.has(currency) ||
+        expenseCents.has(currency),
+    ).map((currency) => {
+      const income = incomeCents.get(currency) ?? 0;
+      const expense = expenseCents.get(currency) ?? 0;
+      const dayBucket = byDay.get(currency);
+
+      return {
+        currency,
+        incomeCents: income,
+        expenseCents: expense,
+        netCents: income - expense,
+        dailyExpenses: days.map((date) => ({
+          date,
+          cents: dayBucket?.get(date) ?? 0,
+        })),
+        expensesByCategory: toSlices(
+          byCategory.get(currency),
+          (id) => (id ? (categoryName.get(id) ?? "Outro") : "Sem categoria"),
+          expense,
+        ),
+        expensesByProfile: toSlices(
+          byProfile.get(currency),
+          (id) => (id ? (profileName.get(id) ?? "Outro") : "Sem responsável"),
+          expense,
+        ),
+      };
+    });
+
+    return {
+      monthStartYmd,
+      monthEndYmd,
+      days,
+      currencies,
+      unresolvedIncomeCents,
+      unresolvedExpenseCents,
+    };
+  },
+);
+
+export type SpaceDashboard = Awaited<ReturnType<typeof getSpaceDashboard>>;
+export type DashboardCurrency = SpaceDashboard["currencies"][number];
+
+export const getSpaceCategoryHistory = cache(
+  async (spaceId: string, take: number = 2000) => {
+    const rows = await prisma.transaction.findMany({
+      where: { spaceId, categoryId: { not: null } },
+      orderBy: { date: "desc" },
+      take,
+      select: { description: true, categoryId: true, date: true },
+    });
+
+    return rows.map((row) => ({
+      description: row.description,
+      categoryId: row.categoryId as string,
+      ymd: row.date.toISOString().slice(0, 10),
+    }));
+  },
+);
+
+export const getSpaceImportDedupeIndex = cache(
+  async (
+    spaceId: string,
+    accountId: string | null,
+    creditCardId: string | null,
+    startYmd: string,
+    endYmd: string,
+  ) => {
+    const scope = creditCardId
+      ? { creditCardId }
+      : accountId
+        ? {
+            OR: [
+              { originAccountId: accountId },
+              { destinationAccountId: accountId },
+            ],
+          }
+        : {};
+
+    const rows = await prisma.transaction.findMany({
+      where: {
+        spaceId,
+        date: { gte: ymdToUtcDate(startYmd), lte: ymdToUtcDate(endYmd) },
+        ...scope,
+      },
+      select: { hashId: true, date: true, description: true, amount: true },
+    });
+
+    return rows.map((row) => ({
+      hashId: row.hashId,
+      ymd: row.date.toISOString().slice(0, 10),
+      description: row.description,
+      amountCents: decimalToCents(row.amount),
+    }));
+  },
+);
+
+export const getSpaceImports = cache(
+  async (spaceId: string, take: number = 20) => {
+    const rows = await prisma.import.findMany({
+      where: { spaceId },
+      orderBy: { createdAt: "desc" },
+      take,
+      select: {
+        id: true,
+        fileName: true,
+        type: true,
+        status: true,
+        referenceMonth: true,
+        createdAt: true,
+        Account: { select: { id: true, name: true } },
+        CreditCard: { select: { id: true, name: true, lastFour: true } },
+        ImportedBy: { select: { id: true, name: true } },
+        _count: { select: { Transactions: true } },
+      },
+    });
+
+    return rows.map(({ referenceMonth, createdAt, _count, ...row }) => ({
+      ...row,
+      transactionCount: _count.Transactions,
+      referenceMonthYmd: referenceMonth?.toISOString().slice(0, 10) ?? null,
+      createdAtYmd: toYmd(createdAt),
+    }));
+  },
+);
+
+export type SpaceImport = Awaited<ReturnType<typeof getSpaceImports>>[number];

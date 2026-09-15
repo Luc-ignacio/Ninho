@@ -11,7 +11,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 
-const ACCEPTED_EXTENSIONS = [".pdf", ".ofx", ".qif"] as const;
+const ACCEPTED_EXTENSIONS = [".ofx"] as const;
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(",");
 
 function hasAcceptedExtension(fileName: string) {
@@ -27,28 +27,34 @@ function formatBytes(bytes: number) {
 
 interface ImportDropZoneProps {
   className?: string;
+  file?: File | null;
+  disabled?: boolean;
   onFileSelected?: (file: File | null) => void;
 }
 
 export function ImportDropZone({
   className,
+  file: controlledFile,
+  disabled,
   onFileSelected,
 }: ImportDropZoneProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const dragDepth = React.useRef(0);
 
-  const [file, setFile] = React.useState<File | null>(null);
+  const [internalFile, setInternalFile] = React.useState<File | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  const file = controlledFile !== undefined ? controlledFile : internalFile;
+
   const selectFile = (next: File | null) => {
     if (next && !hasAcceptedExtension(next.name)) {
-      setError("Formato não suportado. Envie um arquivo .pdf, .ofx ou .qif.");
+      setError("Formato não suportado. Envie um arquivo .ofx.");
       return;
     }
 
     setError(null);
-    setFile(next);
+    setInternalFile(next);
     onFileSelected?.(next);
   };
 
@@ -88,6 +94,7 @@ export function ImportDropZone({
             variant="ghost"
             size="icon-sm"
             aria-label="Remover arquivo"
+            disabled={disabled}
             onClick={() => selectFile(null)}
           >
             <HugeiconsIcon icon={Cancel01Icon} />
@@ -122,7 +129,7 @@ export function ImportDropZone({
               Arraste o arquivo aqui ou clique para procurar
             </span>
             <span className="text-xs text-muted-foreground">
-              Formatos aceitos: PDF, OFX e QIF
+              Formato aceito: OFX
             </span>
           </div>
           <span className="pointer-events-none text-xs font-bold text-primary underline underline-offset-4">
