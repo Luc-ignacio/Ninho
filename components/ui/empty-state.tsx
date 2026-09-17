@@ -22,7 +22,7 @@ export function EmptyState({
           <HugeiconsIcon icon={icon} />
         </div>
 
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center text-center">
           <span className="font-bold text-base">{title}</span>
 
           <span className="text-muted-foreground">{description}</span>

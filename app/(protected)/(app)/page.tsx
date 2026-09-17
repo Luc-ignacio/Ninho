@@ -8,7 +8,6 @@ import { CreateSpace } from "@/components/space/create-space";
 import { CreditCardItem } from "@/components/space/credit-card-item";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Item,
@@ -17,9 +16,10 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import { getActiveSpace } from "@/lib/space/get-active-space";
+import { formatMonthLabel } from "@/lib/space/transaction-filters";
 import {
   getSpaceDashboard,
   getSpaceTransactions,
@@ -44,7 +44,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { columns } from "./transactions/columns";
+import { TransactionsView } from "./transactions/transactions-view";
 
 export default async function DashboardPage() {
   const greeting = getGreeting();
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
       month.start.toISOString().slice(0, 10),
       month.end.toISOString().slice(0, 10),
     ),
-    getSpaceTransactions(space.id, null, null, 5, 0),
+    getSpaceTransactions(space.id, { take: 5 }),
   ]);
 
   const balanceByCurrency = new Map(
@@ -124,73 +124,79 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div className="flex w-full items-center justify-between">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        eyebrow={`${greeting},`}
+        title={profile?.name}
+        actions={<CreateSpace className="flex-1 sm:flex-none" />}
+      />
+
+      <div className="space-y-6">
         <div className="flex flex-col">
-          <span className="text-sm text-olive-600">{`${greeting},`}</span>
-          <span className="text-xl font-medium">{profile?.name}</span>
+          <h2 className="font-bold">Resumo do mês</h2>
+          <span className="text-sm text-olive-600">
+            {formatMonthLabel(month.start.toISOString().slice(0, 7))}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <CreateSpace />
-          <SidebarTrigger size="icon-lg" />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <Card key={stat.id} size="sm">
-            <CardContent className="flex flex-col gap-2">
-              <span className="font-medium">{stat.title}</span>
-
-              {currencies.length > 0 ? (
-                <div className="flex flex-col gap-1">
-                  {currencies.map((currency) => {
-                    const cents = stat.valueOf(currency);
-
-                    return (
-                      <div
-                        key={currency.currency}
-                        className="flex items-baseline gap-2"
-                      >
-                        <span
-                          className={cn(
-                            stat.valueClass(cents),
-                            isMultiCurrency
-                              ? "text-2xl font-bold"
-                              : "text-3xl font-bold",
-                          )}
-                        >
-                          {formatCurrency(cents, currency.currency)}
-                        </span>
-
-                        {isMultiCurrency && (
-                          <span className="text-xs text-olive-600">
-                            {currency.currency}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <span className="text-muted-foreground text-3xl font-bold">
-                  {formatCurrency(0, "BRL")}
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
+          {stats.map((stat) => (
+            <Card key={stat.id} size="sm">
+              <CardContent className="flex min-w-0 flex-col gap-2">
+                <span className="truncate text-sm font-medium sm:text-base">
+                  {stat.title}
                 </span>
-              )}
 
-              <div
-                className={cn(
-                  stat.footerClass,
-                  "flex items-center gap-1 text-xs",
+                {currencies.length > 0 ? (
+                  <div className="flex min-w-0 flex-col gap-1">
+                    {currencies.map((currency) => {
+                      const cents = stat.valueOf(currency);
+
+                      return (
+                        <div
+                          key={currency.currency}
+                          className="flex min-w-0 items-baseline gap-2"
+                        >
+                          <span
+                            className={cn(
+                              stat.valueClass(cents),
+                              "truncate font-bold tabular-nums",
+                              isMultiCurrency
+                                ? "text-lg sm:text-xl xl:text-2xl"
+                                : "text-xl sm:text-2xl xl:text-3xl",
+                            )}
+                          >
+                            {formatCurrency(cents, currency.currency)}
+                          </span>
+
+                          {isMultiCurrency && (
+                            <span className="shrink-0 text-xs text-olive-600">
+                              {currency.currency}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="truncate text-xl font-bold text-muted-foreground sm:text-2xl xl:text-3xl">
+                    {formatCurrency(0, "BRL")}
+                  </span>
                 )}
-              >
-                {stat.footerIcon}
-                {stat.footer}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                <div
+                  className={cn(
+                    stat.footerClass,
+                    "flex items-center gap-1 text-xs",
+                  )}
+                >
+                  {stat.footerIcon}
+                  <span className="truncate">{stat.footer}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {expenseCurrencies.length > 0 ? (
@@ -288,7 +294,7 @@ export default async function DashboardPage() {
         <h2 className="font-bold">Contas</h2>
 
         {space.Accounts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {space.Accounts.map((account) => (
               <Link href={`/accounts/${account.id}`} key={account.id}>
                 <Item
@@ -310,7 +316,7 @@ export default async function DashboardPage() {
                         {formatCurrency(account.balanceCents, account.currency)}
                       </span>
 
-                      <div className="flex items-center gap-3 text-xs">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                         <span className="text-olive-600">Este mês</span>
 
                         <span className="flex items-center gap-1 text-green-600">
@@ -355,7 +361,7 @@ export default async function DashboardPage() {
         <h2 className="font-bold">Cartões</h2>
 
         {space.CreditCards.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {space.CreditCards.map((creditCard, index) => (
               <CreditCardItem
                 key={creditCard.id}
@@ -379,7 +385,7 @@ export default async function DashboardPage() {
         <h2 className="font-bold">Transações recentes</h2>
 
         {recent.transactions.length > 0 ? (
-          <DataTable columns={columns} data={recent.transactions} />
+          <TransactionsView transactions={recent.transactions} />
         ) : (
           <EmptyState
             icon={TransactionIcon}

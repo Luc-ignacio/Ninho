@@ -29,9 +29,16 @@ import { useState } from "react";
 import { addSpaceMember } from "@/app/actions/space-member";
 import { notFound, useRouter } from "next/navigation";
 import { ActiveSpace } from "@/lib/space/get-active-space";
+import { cn } from "@/lib/utils";
 import { SpaceRole } from "@/app/generated/prisma/enums";
 
-export function AddSpaceMember({ space }: { space: ActiveSpace }) {
+export function AddSpaceMember({
+  space,
+  className,
+}: {
+  space: ActiveSpace;
+  className?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -77,15 +84,13 @@ export function AddSpaceMember({ space }: { space: ActiveSpace }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className={buttonVariants({
-          variant: "default",
-        })}
+        className={cn(buttonVariants({ variant: "default" }), className)}
       >
         <HugeiconsIcon icon={Add01Icon} />
-        Adicionar Membro
+        <span className="truncate">Adicionar Membro</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader className="space-y-1">

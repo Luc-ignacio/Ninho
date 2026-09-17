@@ -22,7 +22,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ActiveSpace } from "@/lib/space/get-active-space";
-import { currencySymbol, formatCents, parseCurrencyInput } from "@/lib/utils";
+import {
+  cn,
+  currencySymbol,
+  formatCents,
+  parseCurrencyInput,
+} from "@/lib/utils";
 import { CurrencyType } from "@/app/generated/prisma/enums";
 import { Add01Icon, Loading03Icon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -31,7 +36,13 @@ import { useState } from "react";
 import SelectSpaceAccount from "./select-space-account";
 import SelectSpaceMember from "./select-space-member";
 
-export function AddSpaceCreditCard({ space }: { space: ActiveSpace }) {
+export function AddSpaceCreditCard({
+  space,
+  className,
+}: {
+  space: ActiveSpace;
+  className?: string;
+}) {
   const router = useRouter();
   const defaultProfileId =
     space?.Members.find((member) => member.role === "OWNER")?.Profile.id ??
@@ -94,15 +105,13 @@ export function AddSpaceCreditCard({ space }: { space: ActiveSpace }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className={buttonVariants({
-          variant: "default",
-        })}
+        className={cn(buttonVariants({ variant: "default" }), className)}
       >
         <HugeiconsIcon icon={Add01Icon} />
-        Adicionar Cartão
+        <span className="truncate">Adicionar Cartão</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader>

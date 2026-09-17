@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { upsertProfile } from "@/app/actions/profile";
+import { hasAnySpace } from "@/app/actions/space";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Loading03Icon } from "@hugeicons/core-free-icons";
 
@@ -50,22 +51,19 @@ export function SignUpForm({
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: { name },
         },
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        const profileData = {
-          id: data.user.id,
-          name: name,
-          email: data.user.email!,
-        };
-
-        const profile = await upsertProfile(profileData);
+      if (data.session) {
+        const profile = await upsertProfile();
 
         if (!profile) throw new Error("Ocorreu um erro ao criar seu perfil");
 
+        router.push((await hasAnySpace()) ? "/" : "/onboarding");
+      } else if (data.user) {
         router.push("/auth/sign-up-success");
       }
     } catch (error: unknown) {

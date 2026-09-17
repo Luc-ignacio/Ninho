@@ -8,7 +8,7 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { accountTypeLabel, formatCurrency } from "@/lib/utils";
 import {
@@ -28,23 +28,17 @@ export default async function AccountsPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div className="flex w-full items-center justify-between">
-        <div className="flex flex-col">
-          <span className="text-xl font-medium">Contas</span>
-          <span className="text-sm text-olive-600">
-            Acompanhe os saldos das suas contas.
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AddSpaceAccount space={space} />
-          <SidebarTrigger size="icon-lg" />
-        </div>
-      </div>
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        title="Contas"
+        description="Acompanhe os saldos das suas contas."
+        actions={
+          <AddSpaceAccount space={space} className="flex-1 sm:flex-none" />
+        }
+      />
 
       {space.Accounts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {space.Accounts.map((account) => (
             <Link href={`/accounts/${account.id}`} key={account.id}>
               <Item
@@ -67,7 +61,7 @@ export default async function AccountsPage() {
                       {formatCurrency(account.balanceCents, account.currency)}
                     </span>
 
-                    <div className="flex items-center gap-3 text-xs">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                       <span className="text-olive-600">Este mês</span>
 
                       <span className="flex items-center gap-1 text-green-600">

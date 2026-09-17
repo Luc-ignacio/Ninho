@@ -29,7 +29,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 
-function TransactionActions({
+export function TransactionActions({
   transaction,
 }: {
   transaction: SpaceTransaction;
@@ -92,7 +92,7 @@ function TransactionActions({
 }
 
 // Uma despesa no cartão não movimenta conta nenhuma, então mostra o cartão.
-function accountLabel(transaction: SpaceTransaction) {
+export function accountLabel(transaction: SpaceTransaction) {
   const { OriginAccount, DestinationAccount, CreditCard } = transaction;
 
   if (OriginAccount && DestinationAccount) {
@@ -111,6 +111,30 @@ function accountLabel(transaction: SpaceTransaction) {
   return "—";
 }
 
+export function TransactionAmount({
+  transaction,
+}: {
+  transaction: SpaceTransaction;
+}) {
+  // O valor é sempre positivo no banco; o sinal aqui é só apresentação.
+  const currency =
+    transaction.OriginAccount?.currency ??
+    transaction.DestinationAccount?.currency ??
+    transaction.CreditCard?.Account?.currency ??
+    "BRL";
+  const formatted = formatCurrency(transaction.amountCents, currency);
+
+  if (transaction.type === "INCOME") {
+    return <span className="font-medium text-lime-600">+{formatted}</span>;
+  }
+
+  if (transaction.type === "TRANSFER") {
+    return <span className="font-medium">{formatted}</span>;
+  }
+
+  return <span className="font-medium text-red-600">−{formatted}</span>;
+}
+
 const columnHelper = createColumnHelper<DataTableFeatures, SpaceTransaction>();
 
 export const columns = columnHelper.columns([
@@ -122,16 +146,20 @@ export const columns = columnHelper.columns([
     header: "Descrição",
     cell: ({ row, getValue }) => {
       const { installmentNumber, installmentTotal } = row.original;
+      const description = getValue();
 
       return (
-        <span className="flex items-center gap-2">
-          {getValue()}
+        <div className="flex max-w-[22ch] items-center gap-2 whitespace-normal xl:max-w-[36ch]">
+          <span className="line-clamp-3 wrap-break-word" title={description}>
+            {description}
+          </span>
+
           {installmentTotal && (
-            <Badge variant="outline" className="text-olive-600">
+            <Badge variant="outline" className="shrink-0 text-olive-600">
               {installmentNumber}/{installmentTotal}
             </Badge>
           )}
-        </span>
+        </div>
       );
     },
   }),
@@ -147,7 +175,27 @@ export const columns = columnHelper.columns([
   }),
   columnHelper.accessor(accountLabel, {
     id: "account",
-    header: "Conta",
+    header: "Conta/Cartão",
+    cell: ({ row }) => {
+      const { OriginAccount, DestinationAccount, CreditCard } = row.original;
+
+      const [primary, secondary] =
+        OriginAccount && DestinationAccount
+          ? [OriginAccount.name, `→ ${DestinationAccount.name}`]
+          : CreditCard
+            ? [
+                CreditCard.name,
+                CreditCard.lastFour ? `•••• ${CreditCard.lastFour}` : null,
+              ]
+            : [OriginAccount?.name ?? DestinationAccount?.name ?? "—", null];
+
+      return (
+        <div className="flex max-w-[16ch] flex-col whitespace-normal wrap-break-word xl:max-w-[22ch]">
+          <span>{primary}</span>
+          {secondary && <span className="text-olive-600">{secondary}</span>}
+        </div>
+      );
+    },
   }),
   columnHelper.accessor((row) => transactionMethodLabel[row.method], {
     id: "method",
@@ -159,26 +207,7 @@ export const columns = columnHelper.columns([
   }),
   columnHelper.accessor("amountCents", {
     header: "Valor",
-    cell: ({ row, getValue }) => {
-      const transaction = row.original;
-      // O valor é sempre positivo no banco; o sinal aqui é só apresentação.
-      const currency =
-        transaction.OriginAccount?.currency ??
-        transaction.DestinationAccount?.currency ??
-        transaction.CreditCard?.Account?.currency ??
-        "BRL";
-      const formatted = formatCurrency(getValue(), currency);
-
-      if (transaction.type === "INCOME") {
-        return <span className="font-medium text-lime-600">+{formatted}</span>;
-      }
-
-      if (transaction.type === "TRANSFER") {
-        return <span className="font-medium">{formatted}</span>;
-      }
-
-      return <span className="font-medium text-red-600">−{formatted}</span>;
-    },
+    cell: ({ row }) => <TransactionAmount transaction={row.original} />,
   }),
   columnHelper.display({
     id: "actions",

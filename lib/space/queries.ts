@@ -1,8 +1,15 @@
 import { cache } from "react";
 
-import type { CurrencyType } from "@/app/generated/prisma/enums";
+import type {
+  CurrencyType,
+  TransactionType,
+} from "@/app/generated/prisma/enums";
 import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import prisma from "@/lib/prisma";
+import {
+  TRANSACTIONS_PAGE_SIZE,
+  type SpaceTransactionFilters,
+} from "@/lib/space/transaction-filters";
 import {
   addDaysUtc,
   currentMonthRangeUtc,
@@ -38,6 +45,10 @@ export type SpaceTransaction = Awaited<
 
 export type SpaceAccountDetail = NonNullable<
   Awaited<ReturnType<typeof getSpaceAccountById>>
+>;
+
+export type SpaceCreditCardDetail = NonNullable<
+  Awaited<ReturnType<typeof getSpaceCreditCardById>>
 >;
 
 interface AccountBalanceInput {
@@ -452,99 +463,240 @@ export const getSpaceAccountById = cache(
   },
 );
 
-// Parâmetros primitivos de propósito: o `cache` do React compara argumentos por
+export const getSpaceCreditCardById = cache(
+  async (creditCardId: string, spaceId: string) => {
+    const spaceCreditCard = await prisma.creditCard.findFirst({
+      // O `spaceId` escopa o cartão ao espaço do usuário.
+      where: {
+        id: creditCardId,
+        spaceId,
+      },
+      select: {
+        id: true,
+        spaceId: true,
+        name: true,
+        lastFour: true,
+        creditLimit: true,
+        dueDay: true,
+        isActive: true,
+        createdAt: true,
+        Holder: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        Account: {
+          select: {
+            id: true,
+            name: true,
+            currency: true,
+          },
+        },
+        _count: {
+          select: {
+            Transactions: true,
+            InstallmentPurchases: true,
+          },
+        },
+      },
+    });
+
+    if (!spaceCreditCard) return null;
+
+    const usage = await getCreditCardUsageCents([spaceCreditCard.id]);
+
+    const { creditLimit, ...creditCard } = spaceCreditCard;
+    const creditLimitCents =
+      creditLimit === null ? null : decimalToCents(creditLimit);
+    const usedCents = usage.get(spaceCreditCard.id) ?? 0;
+
+    return {
+      ...creditCard,
+      creditLimitCents,
+      usedCents,
+      availableCents:
+        creditLimitCents === null ? null : creditLimitCents - usedCents,
+    };
+  },
+);
+
+interface TransactionsQueryKey {
+  spaceId: string;
+  accountId: string | null;
+  creditCardId: string | null;
+  categoryId: string | null;
+  uncategorized: boolean;
+  profileId: string | null;
+  type: TransactionType | null;
+  search: string | null;
+  startYmd: string | null;
+  endYmd: string | null;
+  take: number;
+  skip: number;
+}
+
+// A chave é serializada de propósito: o `cache` do React compara argumentos por
 // identidade, então um objeto de opções recriaria a chave a cada chamada e
 // anularia a memoização.
-export const getSpaceTransactions = cache(
-  async (
-    spaceId: string,
-    accountId: string | null = null,
-    creditCardId: string | null = null,
-    take: number = 50,
-    skip: number = 0,
-  ) => {
-    const where = {
-      spaceId,
-      ...(accountId
-        ? {
-            OR: [
-              { originAccountId: accountId },
-              { destinationAccountId: accountId },
-            ],
-          }
-        : {}),
-      ...(creditCardId ? { creditCardId } : {}),
-    };
+const getSpaceTransactionsByKey = cache(async (key: string) => {
+  const {
+    spaceId,
+    accountId,
+    creditCardId,
+    categoryId,
+    uncategorized,
+    profileId,
+    type,
+    search,
+    startYmd,
+    endYmd,
+    take,
+    skip,
+  } = JSON.parse(key) as TransactionsQueryKey;
 
-    const [rows, total] = await Promise.all([
-      prisma.transaction.findMany({
-        where,
-        orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        take,
-        skip,
-        select: {
-          id: true,
-          date: true,
-          description: true,
-          amount: true,
-          type: true,
-          method: true,
-          source: true,
-          installmentNumber: true,
-          installmentTotal: true,
-          Category: {
-            select: {
-              id: true,
-              name: true,
-            },
+  const where = {
+    spaceId,
+    ...(accountId
+      ? {
+          OR: [
+            { originAccountId: accountId },
+            { destinationAccountId: accountId },
+          ],
+        }
+      : {}),
+    ...(creditCardId ? { creditCardId } : {}),
+    ...(uncategorized
+      ? { categoryId: null }
+      : categoryId
+        ? { categoryId }
+        : {}),
+    ...(profileId ? { profileId } : {}),
+    ...(type ? { type } : {}),
+    ...(search
+      ? { description: { contains: search, mode: "insensitive" as const } }
+      : {}),
+    ...(startYmd && endYmd
+      ? { date: { gte: ymdToUtcDate(startYmd), lt: ymdToUtcDate(endYmd) } }
+      : {}),
+  };
+
+  const [rows, total] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      orderBy: [{ date: "desc" as const }, { createdAt: "desc" as const }],
+      take,
+      skip,
+      select: {
+        id: true,
+        date: true,
+        description: true,
+        amount: true,
+        type: true,
+        method: true,
+        source: true,
+        installmentNumber: true,
+        installmentTotal: true,
+        Category: {
+          select: {
+            id: true,
+            name: true,
           },
-          Profile: {
-            select: {
-              id: true,
-              name: true,
-            },
+        },
+        Profile: {
+          select: {
+            id: true,
+            name: true,
           },
-          OriginAccount: {
-            select: {
-              id: true,
-              name: true,
-              currency: true,
-            },
+        },
+        OriginAccount: {
+          select: {
+            id: true,
+            name: true,
+            currency: true,
           },
-          DestinationAccount: {
-            select: {
-              id: true,
-              name: true,
-              currency: true,
-            },
+        },
+        DestinationAccount: {
+          select: {
+            id: true,
+            name: true,
+            currency: true,
           },
-          CreditCard: {
-            select: {
-              id: true,
-              name: true,
-              lastFour: true,
-              Account: {
-                select: {
-                  currency: true,
-                },
+        },
+        CreditCard: {
+          select: {
+            id: true,
+            name: true,
+            lastFour: true,
+            Account: {
+              select: {
+                currency: true,
               },
             },
           },
         },
-      }),
-      prisma.transaction.count({ where }),
-    ]);
+      },
+    }),
+    prisma.transaction.count({ where }),
+  ]);
 
-    return {
-      total,
-      transactions: rows.map(({ amount, date, ...transaction }) => ({
-        ...transaction,
-        amountCents: decimalToCents(amount),
-        date: date.toISOString().slice(0, 10),
-      })),
-    };
-  },
-);
+  return {
+    total,
+    transactions: rows.map(({ amount, date, ...transaction }) => ({
+      ...transaction,
+      amountCents: decimalToCents(amount),
+      date: date.toISOString().slice(0, 10),
+    })),
+  };
+});
+
+export function getSpaceTransactions(
+  spaceId: string,
+  filters: SpaceTransactionFilters = {},
+) {
+  return getSpaceTransactionsByKey(
+    JSON.stringify({
+      spaceId,
+      accountId: filters.accountId ?? null,
+      creditCardId: filters.creditCardId ?? null,
+      categoryId: filters.categoryId ?? null,
+      uncategorized: filters.uncategorized ?? false,
+      profileId: filters.profileId ?? null,
+      type: filters.type ?? null,
+      search: filters.search?.trim() || null,
+      startYmd: filters.startYmd ?? null,
+      endYmd: filters.endYmd ?? null,
+      take: filters.take ?? TRANSACTIONS_PAGE_SIZE,
+      skip: filters.skip ?? 0,
+    } satisfies TransactionsQueryKey),
+  );
+}
+
+export const getSpaceTransactionMonths = cache(async (spaceId: string) => {
+  const range = await prisma.transaction.aggregate({
+    where: { spaceId },
+    _min: { date: true },
+    _max: { date: true },
+  });
+
+  const first = range._min.date;
+  const last = range._max.date;
+
+  if (!first || !last) return [];
+
+  const months: string[] = [];
+  const cursor = new Date(
+    Date.UTC(last.getUTCFullYear(), last.getUTCMonth(), 1),
+  );
+  const oldest = Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), 1);
+
+  while (cursor.getTime() >= oldest) {
+    months.push(cursor.toISOString().slice(0, 7));
+    cursor.setUTCMonth(cursor.getUTCMonth() - 1);
+  }
+
+  return months;
+});
 
 const CURRENCY_ORDER: CurrencyType[] = ["BRL", "USD", "AUD"];
 const TOP_SLICES = 8;
@@ -764,7 +916,12 @@ export const getSpaceDashboard = cache(
 
       if (!currency) continue;
 
-      addCents(byProfile, currency, row.profileId, decimalToCents(row._sum.amount));
+      addCents(
+        byProfile,
+        currency,
+        row.profileId,
+        decimalToCents(row._sum.amount),
+      );
     }
 
     for (const row of dailyRows) {
@@ -786,10 +943,7 @@ export const getSpaceDashboard = cache(
 
       const bucket = byDay.get(currency) ?? new Map<string, number>();
 
-      bucket.set(
-        ymd,
-        (bucket.get(ymd) ?? 0) + decimalToCents(row._sum.amount),
-      );
+      bucket.set(ymd, (bucket.get(ymd) ?? 0) + decimalToCents(row._sum.amount));
       byDay.set(currency, bucket);
     }
 
@@ -800,7 +954,8 @@ export const getSpaceDashboard = cache(
 
     let cutoffYmd = today > monthStartYmd ? today : monthStartYmd;
 
-    if (lastExpenseYmd && lastExpenseYmd > cutoffYmd) cutoffYmd = lastExpenseYmd;
+    if (lastExpenseYmd && lastExpenseYmd > cutoffYmd)
+      cutoffYmd = lastExpenseYmd;
     if (cutoffYmd > lastDayOfMonth) cutoffYmd = lastDayOfMonth;
 
     const days: string[] = [];
@@ -813,7 +968,9 @@ export const getSpaceDashboard = cache(
       days.push(day.toISOString().slice(0, 10));
     }
 
-    const accountCurrencies = new Set(accounts.map((account) => account.currency));
+    const accountCurrencies = new Set(
+      accounts.map((account) => account.currency),
+    );
 
     const currencies = CURRENCY_ORDER.filter(
       (currency) =>

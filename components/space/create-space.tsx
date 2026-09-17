@@ -88,7 +88,7 @@ export function CreateSpace({
         </DialogTrigger>
       )}
 
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader>

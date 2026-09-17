@@ -18,9 +18,16 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { ActiveSpace } from "@/lib/space/get-active-space";
+import { cn } from "@/lib/utils";
 import { addSpaceCategory } from "@/app/actions/category";
 
-export function AddSpaceCategory({ space }: { space: ActiveSpace }) {
+export function AddSpaceCategory({
+  space,
+  className,
+}: {
+  space: ActiveSpace;
+  className?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState("");
@@ -59,15 +66,13 @@ export function AddSpaceCategory({ space }: { space: ActiveSpace }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className={buttonVariants({
-          variant: "default",
-        })}
+        className={cn(buttonVariants({ variant: "default" }), className)}
       >
         <HugeiconsIcon icon={Add01Icon} />
-        Adicionar Categoria
+        <span className="truncate">Adicionar Categoria</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-md max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader className="space-y-1">

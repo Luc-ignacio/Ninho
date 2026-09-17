@@ -2,6 +2,7 @@ import { type EmailOtpType } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { type NextRequest } from 'next/server'
 
+import { upsertActiveProfile } from '@/lib/auth/upsert-active-profile'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
@@ -19,6 +20,8 @@ export async function GET(request: NextRequest) {
       token_hash,
     })
     if (!error) {
+      await upsertActiveProfile()
+
       // redirect user to specified redirect URL or root of app
       redirect(next)
     } else {

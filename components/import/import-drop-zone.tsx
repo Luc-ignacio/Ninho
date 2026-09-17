@@ -126,7 +126,10 @@ export function ImportDropZone({
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">
-              Arraste o arquivo aqui ou clique para procurar
+              <span className="sm:hidden">Toque para escolher um arquivo</span>
+              <span className="hidden sm:inline">
+                Arraste o arquivo aqui ou clique para procurar
+              </span>
             </span>
             <span className="text-xs text-muted-foreground">
               Formato aceito: OFX

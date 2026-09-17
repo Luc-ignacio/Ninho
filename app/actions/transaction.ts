@@ -6,6 +6,14 @@ import {
 } from "@/app/generated/prisma/enums";
 import prisma from "@/lib/prisma";
 import { getActiveSpace } from "@/lib/space/get-active-space";
+import { getSpaceTransactions } from "@/lib/space/queries";
+import {
+  parseTransactionFilters,
+  toQueryFilters,
+  transactionFiltersToQuery,
+  TRANSACTIONS_PAGE_SIZE,
+  type TransactionFilterValues,
+} from "@/lib/space/transaction-filters";
 import {
   addMonthsUtc,
   centsToDecimal,
@@ -360,4 +368,28 @@ export async function deleteSpaceTransaction(transactionId: string) {
   }
 
   await prisma.transaction.delete({ where: { id: transactionId } });
+}
+
+export async function loadMoreSpaceTransactions(
+  filters: TransactionFilterValues,
+  skip: number,
+  take: number = TRANSACTIONS_PAGE_SIZE,
+) {
+  const space = await getActiveSpace();
+
+  if (!space) {
+    throw new Error("Espaço não encontrado");
+  }
+
+  const safeFilters = parseTransactionFilters(
+    Object.fromEntries(transactionFiltersToQuery(filters)),
+  );
+
+  return getSpaceTransactions(space.id, {
+    ...toQueryFilters(safeFilters),
+    take: Number.isFinite(take)
+      ? Math.min(Math.max(1, Math.trunc(take)), TRANSACTIONS_PAGE_SIZE)
+      : TRANSACTIONS_PAGE_SIZE,
+    skip: Number.isFinite(skip) ? Math.max(0, Math.trunc(skip)) : 0,
+  });
 }

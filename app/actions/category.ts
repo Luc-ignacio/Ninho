@@ -13,6 +13,7 @@ const templateCategories = [
   "Lazer",
   "Educação",
   "Saúde",
+  "Investimentos",
   "Outros",
 ];
 

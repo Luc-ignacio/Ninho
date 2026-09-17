@@ -21,6 +21,10 @@ import {
 } from "@/lib/import/categorize";
 import { buildFingerprint, buildHashId } from "@/lib/import/dedupe";
 import {
+  impliedPurchaseDate,
+  installmentGroupKey,
+} from "@/lib/import/installments";
+import {
   extractCounterparty,
   extractInstallment,
   normalizeDescription,
@@ -552,6 +556,90 @@ export async function commitImport(
       resolved.map((category) => [category.name, category.id]),
     );
 
+    const scopeId = card?.id ?? account?.id ?? null;
+    const purchaseIdByRow = new Map<(typeof rows)[number], string>();
+
+    const installmentRows = rows.flatMap((row) => {
+      if (row.installmentNumber === null || row.installmentTotal === null) {
+        return [];
+      }
+
+      const purchaseDate = impliedPurchaseDate(
+        ymdToUtcDate(row.ymd),
+        row.installmentNumber,
+      );
+      const description = row.description.trim();
+
+      return [
+        {
+          row,
+          description,
+          purchaseDate,
+          total: row.installmentTotal,
+          key: installmentGroupKey(scopeId, description, row.installmentTotal),
+        },
+      ];
+    });
+
+    if (installmentRows.length > 0) {
+      const scope = card
+        ? { creditCardId: card.id }
+        : account
+          ? { accountId: account.id }
+          : {};
+
+      const existing = await tx.installmentPurchase.findMany({
+        where: {
+          spaceId: space.id,
+          ...scope,
+          totalInstallments: {
+            in: [...new Set(installmentRows.map((item) => item.total))],
+          },
+        },
+        select: {
+          id: true,
+          description: true,
+          totalInstallments: true,
+        },
+      });
+
+      const purchaseIdByKey = new Map(
+        existing.map((purchase) => [
+          installmentGroupKey(
+            scopeId,
+            purchase.description,
+            purchase.totalInstallments,
+          ),
+          purchase.id,
+        ]),
+      );
+
+      for (const item of installmentRows) {
+        let purchaseId = purchaseIdByKey.get(item.key);
+
+        if (!purchaseId) {
+          const purchase = await tx.installmentPurchase.create({
+            data: {
+              spaceId: space.id,
+              accountId: card ? null : (account?.id ?? null),
+              profileId: defaultProfileId,
+              creditCardId: card?.id ?? null,
+              description: item.description,
+              purchaseDate: item.purchaseDate,
+              totalAmount: centsToDecimal(item.row.amountCents * item.total),
+              totalInstallments: item.total,
+            },
+            select: { id: true },
+          });
+
+          purchaseId = purchase.id;
+          purchaseIdByKey.set(item.key, purchaseId);
+        }
+
+        purchaseIdByRow.set(item.row, purchaseId);
+      }
+    }
+
     const created = await tx.import.create({
       data: {
         spaceId: space.id,
@@ -591,7 +679,7 @@ export async function commitImport(
           (row.newCategoryName
             ? (newCategoryId.get(row.newCategoryName.trim()) ?? null)
             : null),
-        installmentPurchaseId: null,
+        installmentPurchaseId: purchaseIdByRow.get(row) ?? null,
         installmentNumber: row.installmentNumber,
         installmentTotal: row.installmentTotal,
         importId: created.id,

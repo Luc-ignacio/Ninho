@@ -4,7 +4,7 @@ import ImportsHistory from "@/app/(protected)/(app)/imports/imports-history";
 import ImportWizard from "@/components/import/import-wizard";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { getSpaceImports } from "@/lib/space/queries";
 import { Upload01Icon } from "@hugeicons/core-free-icons";
@@ -17,23 +17,15 @@ export default async function ImportsPage() {
   const imports = await getSpaceImports(space.id);
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div className="flex w-full items-center justify-between">
-        <div className="flex flex-col">
-          <span className="text-xl font-medium">Importações</span>
-          <span className="text-sm text-olive-600">
-            Importe extratos e faturas para organizar suas transações.
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <SidebarTrigger size="icon-lg" />
-        </div>
-      </div>
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        title="Importações"
+        description="Importe extratos e faturas para organizar suas transações."
+      />
 
       <Card className="min-h-40">
         <CardContent className="flex flex-col flex-1 items-center justify-center space-y-4">
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center text-center">
             <span className="font-bold text-base">
               Importe seu extrato ou fatura
             </span>

@@ -2,7 +2,6 @@ import { AdjustAccountBalance } from "@/components/space/adjust-account-balance"
 import { DeleteSpaceAccount } from "@/components/space/delete-account";
 import { AddSpaceTransaction } from "@/components/space/add-transaction";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   Item,
@@ -11,15 +10,19 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { getSpaceAccountById, getSpaceTransactions } from "@/lib/space/queries";
+import {
+  ACCOUNT_TRANSACTIONS_PAGE_SIZE,
+  emptyTransactionFilters,
+} from "@/lib/space/transaction-filters";
 import { accountTypeLabel, formatCurrency, formatYmd } from "@/lib/utils";
 import { ArrowLeft02Icon, TransactionIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { columns } from "../../transactions/columns";
+import { TransactionsTable } from "../../transactions/transactions-table";
 
 export default async function AccountPage({
   params,
@@ -39,12 +42,10 @@ export default async function AccountPage({
     notFound();
   }
 
-  const { transactions } = await getSpaceTransactions(
-    space.id,
-    account.id,
-    null,
-    10,
-  );
+  const { transactions, total } = await getSpaceTransactions(space.id, {
+    accountId: account.id,
+    take: ACCOUNT_TRANSACTIONS_PAGE_SIZE,
+  });
 
   // `@db.Date` à meia-noite UTC: `toYmd` usaria os getters locais e mostraria o
   // dia anterior em BRT.
@@ -52,30 +53,29 @@ export default async function AccountPage({
     account.BalanceSnapshots[0]?.date.toISOString().slice(0, 10) ?? null;
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div>
-        <div className="flex w-full items-center justify-between">
-          <Link href="/accounts">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        title={account.name}
+        description={`${accountTypeLabel[account.type]} • ${account.currency}`}
+        back={
+          <Link href="/accounts" className="w-fit">
             <Button variant="ghost" className="-ml-3.5">
               <HugeiconsIcon icon={ArrowLeft02Icon} />
               Contas
             </Button>
           </Link>
-
-          <div className="flex items-center gap-2">
-            <AddSpaceTransaction space={space} defaultAccountId={account.id} />
+        }
+        actions={
+          <>
+            <AddSpaceTransaction
+              space={space}
+              defaultAccountId={account.id}
+              className="flex-1 sm:flex-none"
+            />
             <DeleteSpaceAccount account={account} />
-            <SidebarTrigger size="icon-lg" />
-          </div>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-xl font-medium">{account.name}</span>
-          <span className="text-sm text-olive-600">
-            {accountTypeLabel[account.type]} • {account.currency}
-          </span>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -107,24 +107,30 @@ export default async function AccountPage({
 
                 <div className="flex items-center justify-between gap-4">
                   <ItemDescription>Instituição</ItemDescription>
-                  <span className="font-semibold">{account.name}</span>
+                  <span className="min-w-0 truncate text-right font-semibold">
+                    {account.name}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
                   <ItemDescription>Tipo</ItemDescription>
-                  <span className="font-semibold">
+                  <span className="min-w-0 truncate text-right font-semibold">
                     {accountTypeLabel[account.type]}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
                   <ItemDescription>Moeda</ItemDescription>
-                  <span className="font-semibold">{account.currency}</span>
+                  <span className="min-w-0 truncate text-right font-semibold">
+                    {account.currency}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-4">
                   <ItemDescription>Titular</ItemDescription>
-                  <span className="font-semibold">{account.Profile?.name}</span>
+                  <span className="min-w-0 truncate text-right font-semibold">
+                    {account.Profile?.name}
+                  </span>
                 </div>
               </div>
             </ItemContent>
@@ -132,10 +138,15 @@ export default async function AccountPage({
         </div>
 
         <div className="space-y-6">
-          <h2 className="font-bold">Transações recentes</h2>
+          <h2 className="font-bold">Transações</h2>
 
           {transactions.length > 0 ? (
-            <DataTable columns={columns} data={transactions} />
+            <TransactionsTable
+              initialTransactions={transactions}
+              total={total}
+              filters={{ ...emptyTransactionFilters, accountId: account.id }}
+              pageSize={ACCOUNT_TRANSACTIONS_PAGE_SIZE}
+            />
           ) : (
             <EmptyState
               icon={TransactionIcon}

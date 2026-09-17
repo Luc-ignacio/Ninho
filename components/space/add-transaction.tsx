@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/select";
 import { ActiveSpace } from "@/lib/space/get-active-space";
 import {
+  cn,
   currencySymbol,
   formatCents,
   formatCurrency,
@@ -115,11 +116,13 @@ export function AddSpaceTransaction({
   defaultAccountId,
   variant = "default",
   label = "Adicionar Transação",
+  className,
 }: {
   space: ActiveSpace;
   defaultAccountId?: string;
   variant?: React.ComponentProps<typeof Button>["variant"];
   label?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const defaultProfileId =
@@ -249,12 +252,12 @@ export function AddSpaceTransaction({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={buttonVariants({ variant })}>
+      <DialogTrigger className={cn(buttonVariants({ variant }), className)}>
         <HugeiconsIcon icon={Add01Icon} />
-        {label}
+        <span className="truncate">{label}</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader>

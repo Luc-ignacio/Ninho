@@ -7,7 +7,8 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { formatCurrency, formatYmd } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { formatCurrency, formatCurrencyCompact, formatYmd } from "@/lib/utils";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 const chartConfig = {
@@ -24,8 +25,13 @@ export function MonthlyExpensesChart({
   data: { date: string; cents: number }[];
   currency: CurrencyType;
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <ChartContainer config={chartConfig} className="aspect-auto h-56 w-full">
+    <ChartContainer
+      config={chartConfig}
+      className="aspect-auto h-48 w-full sm:h-56"
+    >
       <BarChart data={data} margin={{ left: 4, right: 4, top: 8 }}>
         <CartesianGrid vertical={false} />
 
@@ -34,7 +40,7 @@ export function MonthlyExpensesChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          minTickGap={12}
+          minTickGap={isMobile ? 20 : 12}
           tickFormatter={(value: string) => value.slice(8, 10)}
         />
 
@@ -42,8 +48,12 @@ export function MonthlyExpensesChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          width={76}
-          tickFormatter={(value: number) => formatCurrency(value, currency)}
+          width={isMobile ? 52 : 76}
+          tickFormatter={(value: number) =>
+            isMobile
+              ? formatCurrencyCompact(value, currency)
+              : formatCurrency(value, currency)
+          }
         />
 
         <ChartTooltip

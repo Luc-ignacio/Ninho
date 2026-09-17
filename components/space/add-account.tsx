@@ -37,6 +37,7 @@ import { notFound, useRouter } from "next/navigation";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { addSpaceAccount } from "@/app/actions/account";
 import { ActiveSpace } from "@/lib/space/get-active-space";
+import { cn } from "@/lib/utils";
 import SelectSpaceMember from "./select-space-member";
 
 const accountOptions = [
@@ -81,7 +82,13 @@ const currencyOptions = [
   },
 ];
 
-export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
+export function AddSpaceAccount({
+  space,
+  className,
+}: {
+  space: ActiveSpace;
+  className?: string;
+}) {
   const router = useRouter();
   const defaultProfileId =
     space?.Members.find((member) => member.role === "OWNER")?.Profile.id ??
@@ -137,15 +144,13 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
-        className={buttonVariants({
-          variant: "default",
-        })}
+        className={cn(buttonVariants({ variant: "default" }), className)}
       >
         <HugeiconsIcon icon={Add01Icon} />
-        Adicionar Conta
+        <span className="truncate">Adicionar Conta</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="sm:max-w-lg max-h-[90dvh] overflow-y-auto no-scrollbar">
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col gap-6">
             <DialogHeader>
@@ -169,7 +174,7 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                       (event.target as HTMLInputElement).value as AccountType,
                     )
                   }
-                  className="w-full flex gap-2"
+                  className="grid w-full grid-cols-3 gap-2"
                 >
                   {accountOptions.map((option) => {
                     return (
@@ -187,9 +192,7 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                             </FieldDescription>
 
                             <FieldTitle className="flex items-center justify-between w-full">
-                              <div
-                                className={`w-full justify-center items-center flex`}
-                              >
+                              <div className="flex w-full items-center justify-center text-center">
                                 {option.name}
                               </div>
                               <RadioGroupItem
@@ -234,7 +237,7 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                       (event.target as HTMLInputElement).value as CurrencyType,
                     )
                   }
-                  className="w-full flex gap-2"
+                  className="grid w-full grid-cols-3 gap-2"
                 >
                   {currencyOptions.map((option) => {
                     return (
@@ -252,9 +255,7 @@ export function AddSpaceAccount({ space }: { space: ActiveSpace }) {
                             </FieldDescription>
 
                             <FieldTitle className="flex items-center justify-between w-full">
-                              <div
-                                className={`w-full justify-center items-center flex`}
-                              >
+                              <div className="flex w-full items-center justify-center text-center">
                                 {option.name}
                               </div>
                               <RadioGroupItem

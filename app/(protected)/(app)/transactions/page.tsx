@@ -1,47 +1,98 @@
 import { AddSpaceTransaction } from "@/components/space/add-transaction";
-import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
-import { getSpaceTransactions } from "@/lib/space/queries";
+import {
+  getSpaceTransactionMonths,
+  getSpaceTransactions,
+} from "@/lib/space/queries";
+import {
+  parseTransactionFilters,
+  toQueryFilters,
+  TRANSACTIONS_PAGE_SIZE,
+} from "@/lib/space/transaction-filters";
 import { TransactionIcon } from "@hugeicons/core-free-icons";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { columns } from "./columns";
+import { TransactionFilters } from "./transaction-filters";
+import { TransactionsTable } from "./transactions-table";
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const space = await getActiveSpace();
 
   if (!space) {
     notFound();
   }
 
-  const { transactions } = await getSpaceTransactions(space.id);
+  const filters = parseTransactionFilters(await searchParams);
+
+  const [{ transactions, total }, months] = await Promise.all([
+    getSpaceTransactions(space.id, {
+      ...toQueryFilters(filters),
+      take: TRANSACTIONS_PAGE_SIZE,
+      skip: 0,
+    }),
+    getSpaceTransactionMonths(space.id),
+  ]);
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div className="flex w-full items-center justify-between">
-        <div className="flex flex-col">
-          <span className="text-xl font-medium">Transações</span>
-          <span className="text-sm text-olive-600">
-            Todas as movimentações do seu espaço.
-          </span>
-        </div>
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        title="Transações"
+        description="Todas as movimentações do seu espaço."
+        actions={
+          <>
+            {months.length > 0 && (
+              <TransactionFilters
+                accounts={space.Accounts}
+                creditCards={space.CreditCards}
+                categories={space.Categories}
+                members={space.Members}
+                months={months}
+                values={filters}
+              />
+            )}
+            <AddSpaceTransaction
+              space={space}
+              className="flex-1 sm:flex-none"
+            />
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          <AddSpaceTransaction space={space} />
-          <SidebarTrigger size="icon-lg" />
-        </div>
-      </div>
-
-      {transactions.length > 0 ? (
-        <DataTable columns={columns} data={transactions} />
-      ) : (
+      {months.length === 0 ? (
         <EmptyState
           icon={TransactionIcon}
           title="Nenhuma transação ainda"
           description="Adicione sua primeira transação ou importe um extrato para começar."
           action={<AddSpaceTransaction space={space} />}
         />
+      ) : (
+        <>
+          {transactions.length > 0 ? (
+            <TransactionsTable
+              initialTransactions={transactions}
+              total={total}
+              filters={filters}
+            />
+          ) : (
+            <EmptyState
+              icon={TransactionIcon}
+              title="Nenhuma transação encontrada"
+              description="Ajuste os filtros para ver outras transações."
+              action={
+                <Link href="/transactions">
+                  <Button variant="outline">Limpar filtros</Button>
+                </Link>
+              }
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { AddSpaceCategory } from "@/components/space/add-category";
 import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { Tag01Icon } from "@hugeicons/core-free-icons";
 import { notFound } from "next/navigation";
@@ -15,20 +15,14 @@ export default async function CategoriesPage() {
   }
 
   return (
-    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-6 pb-12">
-      <div className="flex w-full items-center justify-between">
-        <div className="flex flex-col">
-          <span className="text-xl font-medium">Categorias</span>
-          <span className="text-sm text-olive-600">
-            Organize seus gastos por categoria.
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AddSpaceCategory space={space} />
-          <SidebarTrigger size="icon-lg" />
-        </div>
-      </div>
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-6 rounded-2xl p-4 pb-12 sm:p-6 sm:pb-12">
+      <PageHeader
+        title="Categorias"
+        description="Organize seus gastos por categoria."
+        actions={
+          <AddSpaceCategory space={space} className="flex-1 sm:flex-none" />
+        }
+      />
 
       {space.Categories.length ? (
         <DataTable columns={columns} data={space.Categories} />

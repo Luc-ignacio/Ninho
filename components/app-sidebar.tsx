@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -44,6 +45,7 @@ export function AppSidebar({
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const checkIsActive = (url: string) => {
     return pathname === url;
@@ -142,6 +144,9 @@ export function AppSidebar({
                       render={<Link href={item.url} />}
                       isActive={item.isActive}
                       tooltip={item.title}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
                     >
                       {item.icon}
                       {item.title}

@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { DashboardSlice } from "@/lib/space/queries";
 import { formatCurrency } from "@/lib/utils";
 import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
@@ -32,6 +33,8 @@ export function ExpensesRankingChart({
   data: DashboardSlice[];
   currency: CurrencyType;
 }) {
+  const isMobile = useIsMobile();
+
   return (
     <ChartContainer
       config={chartConfig}
@@ -46,8 +49,11 @@ export function ExpensesRankingChart({
           dataKey="name"
           tickLine={false}
           axisLine={false}
-          width={124}
+          width={isMobile ? 88 : 124}
           tickMargin={8}
+          tickFormatter={(value: string) =>
+            isMobile && value.length > 12 ? `${value.slice(0, 11)}…` : value
+          }
         />
 
         <ChartTooltip

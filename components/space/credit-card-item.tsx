@@ -15,6 +15,7 @@ import {
   InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import Link from "next/link";
 
 const cardGradients = [
   "from-lime-600 via-lime-800 to-lime-950",
@@ -98,7 +99,7 @@ function CreditCardBackDetails({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         {creditCard.isActive ? (
           <span className="text-xs text-white/70">
             {creditCard._count.Transactions === 1
@@ -112,6 +113,16 @@ function CreditCardBackDetails({
         )}
 
         <div className="flex items-center gap-1">
+          <Link href={`/cards/${creditCard.id}`}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/15 hover:text-white"
+            >
+              Ver extrato
+            </Button>
+          </Link>
+
           {creditCard.isActive ? (
             <>
               <EditSpaceCreditCard
@@ -149,7 +160,7 @@ export function CreditCardItem({
 
   const surface = `absolute inset-0 flex flex-col justify-between overflow-hidden rounded-2xl bg-linear-to-br ${
     cardGradients[index % cardGradients.length]
-  } p-6 text-white shadow-md backface-hidden ${
+  } p-4 text-white shadow-md backface-hidden sm:p-6 ${
     creditCard.isActive ? "" : "opacity-60 grayscale"
   }`;
 
@@ -165,7 +176,9 @@ export function CreditCardItem({
           <div className="pointer-events-none absolute -bottom-24 -left-10 size-56 rounded-full bg-white/5" />
 
           <div className="relative flex items-start justify-between gap-3">
-            <span className="text-sm font-semibold">{creditCard.name}</span>
+            <span className="truncate text-sm font-semibold">
+              {creditCard.name}
+            </span>
 
             <Button
               variant="ghost"
@@ -178,8 +191,8 @@ export function CreditCardItem({
             </Button>
           </div>
 
-          <div className="relative flex flex-col gap-4 mt-4">
-            <div className="flex items-center gap-3 text-xl font-semibold">
+          <div className="relative mt-3 flex flex-col gap-3 sm:mt-4 sm:gap-4">
+            <div className="flex items-center gap-2 text-lg font-semibold sm:gap-3 sm:text-xl">
               <DotGroup />
               <DotGroup />
               <DotGroup />
@@ -188,15 +201,15 @@ export function CreditCardItem({
               </span>
             </div>
 
-            <span className="text-base font-medium text-white">
+            <span className="truncate text-sm font-medium text-white sm:text-base">
               {creditCard.Holder?.name ?? "Sem titular"}
             </span>
           </div>
 
-          <div className="relative flex items-end justify-between gap-4">
-            <div className="flex flex-col">
+          <div className="relative flex items-end justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
               <span className="text-xs text-white/60">Vencimento</span>
-              <span className="text-sm font-semibold">
+              <span className="truncate text-sm font-semibold">
                 {creditCard.dueDay
                   ? `Dia ${creditCard.dueDay}`
                   : "Não informado"}
@@ -204,9 +217,9 @@ export function CreditCardItem({
             </div>
 
             {creditCard.Account?.name && (
-              <div className="flex flex-col items-end">
+              <div className="flex min-w-0 flex-col items-end">
                 <span className="text-xs text-white/60">Instituição</span>
-                <span className="text-sm font-semibold">
+                <span className="truncate text-sm font-semibold">
                   {creditCard.Account?.name}
                 </span>
               </div>
@@ -222,7 +235,9 @@ export function CreditCardItem({
           <div className="pointer-events-none absolute -left-16 -top-20 size-56 rounded-full bg-white/10" />
 
           <div className="relative flex items-start justify-between gap-3">
-            <span className="text-sm font-semibold">{creditCard.name}</span>
+            <span className="truncate text-sm font-semibold">
+              {creditCard.name}
+            </span>
 
             <Button
               variant="ghost"
@@ -237,7 +252,7 @@ export function CreditCardItem({
 
           <div className="pointer-events-none absolute inset-x-0 top-16 h-8 bg-black/35" />
 
-          <div className="relative flex flex-col gap-4 pt-6">
+          <div className="relative flex flex-col gap-3 pt-4 sm:gap-4 sm:pt-6">
             <CreditCardBackDetails space={space} creditCard={creditCard} />
           </div>
         </div>

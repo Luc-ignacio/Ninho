@@ -341,7 +341,7 @@ export default function ImportWizard({
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={reset} disabled={isLoading}>
               Cancelar
             </Button>

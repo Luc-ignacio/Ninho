@@ -140,6 +140,27 @@ export function formatCurrency(
   }
 }
 
+export function formatCurrencyCompact(
+  cents: number | null | undefined,
+  currency: CurrencyType,
+) {
+  const value = (cents ?? 0) / 100;
+  const formatted = new Intl.NumberFormat(currencyLocales[currency], {
+    style: "currency",
+    currency,
+    notation: Math.abs(value) >= 1000 ? "compact" : "standard",
+    maximumFractionDigits: Math.abs(value) >= 1000 ? 1 : 0,
+  }).format(value);
+
+  if (currency === "USD") {
+    return formatted.replace("$", "U$ ");
+  } else if (currency === "AUD") {
+    return formatted.replace("$", "A$ ");
+  } else {
+    return formatted;
+  }
+}
+
 export function decimalToCents(
   value: { toString(): string } | null | undefined,
 ) {
