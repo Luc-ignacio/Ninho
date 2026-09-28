@@ -5,7 +5,7 @@ import {
   TransactionType,
 } from "@/app/generated/prisma/enums";
 import prisma from "@/lib/prisma";
-import { getActiveSpace } from "@/lib/space/get-active-space";
+import { requireSpace, requireSpaceWriter } from "@/lib/space/space-access";
 import { getSpaceTransactions } from "@/lib/space/queries";
 import {
   parseTransactionFilters,
@@ -36,13 +36,7 @@ export interface TransactionInput {
 }
 
 export async function addSpaceTransaction(input: TransactionInput) {
-  // `getActiveSpace` resolve o cookie `active-space` contra a lista de espaços
-  // em que o usuário é membro, então a autorização já vem resolvida aqui.
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   // Os enums gerados pelo Prisma são objetos `as const`, não enums do TS.
   if (!Object.values(TransactionType).includes(input.type)) {
@@ -344,11 +338,7 @@ export async function addSpaceTransaction(input: TransactionInput) {
 }
 
 export async function deleteSpaceTransaction(transactionId: string) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const transaction = await prisma.transaction.findFirst({
     where: { id: transactionId, spaceId: space.id },
@@ -375,11 +365,7 @@ export async function loadMoreSpaceTransactions(
   skip: number,
   take: number = TRANSACTIONS_PAGE_SIZE,
 ) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpace();
 
   const safeFilters = parseTransactionFilters(
     Object.fromEntries(transactionFiltersToQuery(filters)),

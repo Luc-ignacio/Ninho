@@ -9,12 +9,16 @@ import {
 } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function SettingsPage() {
   const space = await getActiveSpace();
   if (!space) {
     notFound();
+  }
+
+  if (!space.canManage) {
+    redirect("/");
   }
 
   return (

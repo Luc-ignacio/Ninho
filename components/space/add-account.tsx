@@ -106,6 +106,10 @@ export function AddSpaceAccount({
     notFound();
   }
 
+  if (!space.canManage) {
+    return null;
+  }
+
   const resetForm = () => {
     setAccountName("");
     setAccountType("CHECKING");
@@ -121,7 +125,6 @@ export function AddSpaceAccount({
 
     try {
       const accountData = {
-        spaceId: space.id,
         profileId: profileId,
         name: accountName,
         type: accountType,

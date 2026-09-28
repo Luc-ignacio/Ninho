@@ -68,9 +68,11 @@ export default async function MembersPage() {
                     ? "Administrador"
                     : "Membro"}
               </Badge>
-              {member.role !== "OWNER" && (
-                <RemoveSpaceMember space={space} spaceMember={member} />
-              )}
+              {member.role !== "OWNER" &&
+                (space.canManage ||
+                  member.Profile.id === space.viewerProfileId) && (
+                  <RemoveSpaceMember space={space} spaceMember={member} />
+                )}
             </ItemActions>
           </Item>
         ))

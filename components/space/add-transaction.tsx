@@ -153,6 +153,10 @@ export function AddSpaceTransaction({
     notFound();
   }
 
+  if (!space.canManage) {
+    return null;
+  }
+
   const resetForm = () => {
     setType("EXPENSE");
     setPayWithCard(false);

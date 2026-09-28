@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getActiveSpace } from "@/lib/space/get-active-space";
+import { requireSpaceWriter } from "@/lib/space/space-access";
 import { centsToDecimal } from "@/lib/utils";
 
 interface CreditCardData {
@@ -83,13 +83,7 @@ function validateCreditCardData(
 }
 
 export async function addSpaceCreditCard(creditCardData: CreditCardData) {
-  // O espaço vem do cookie validado contra a lista de membros do usuário,
-  // nunca do cliente.
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const data = validateCreditCardData(
     creditCardData,
@@ -109,11 +103,7 @@ export async function updateSpaceCreditCard(
   creditCardId: string,
   creditCardData: CreditCardData,
 ) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const creditCard = await prisma.creditCard.findFirst({
     where: { id: creditCardId, spaceId: space.id },
@@ -140,11 +130,7 @@ export async function updateSpaceCreditCard(
 }
 
 export async function deleteSpaceCreditCard(creditCardId: string) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const creditCard = await prisma.creditCard.findFirst({
     where: { id: creditCardId, spaceId: space.id },
@@ -179,11 +165,7 @@ export async function deleteSpaceCreditCard(creditCardId: string) {
 }
 
 export async function restoreSpaceCreditCard(creditCardId: string) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const creditCard = await prisma.creditCard.findFirst({
     where: { id: creditCardId, spaceId: space.id },

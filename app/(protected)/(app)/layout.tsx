@@ -19,6 +19,7 @@ export default async function AppLayout({
           variant="inset"
           spaces={spaces}
           activeSpaceId={activeSpace?.id}
+          canManage={activeSpace?.canManage ?? false}
         />
         <SidebarInset>
           <div className="relative flex w-full min-w-0 flex-1 flex-col">

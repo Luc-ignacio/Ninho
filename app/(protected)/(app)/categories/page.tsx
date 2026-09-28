@@ -1,11 +1,10 @@
 import { AddSpaceCategory } from "@/components/space/add-category";
-import { DataTable } from "@/components/ui/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import { getActiveSpace } from "@/lib/space/get-active-space";
 import { Tag01Icon } from "@hugeicons/core-free-icons";
 import { notFound } from "next/navigation";
-import { columns } from "./columns";
+import { CategoriesTable } from "./categories-table";
 
 export default async function CategoriesPage() {
   const space = await getActiveSpace();
@@ -25,7 +24,10 @@ export default async function CategoriesPage() {
       />
 
       {space.Categories.length ? (
-        <DataTable columns={columns} data={space.Categories} />
+        <CategoriesTable
+          categories={space.Categories}
+          canManage={space.canManage}
+        />
       ) : (
         <EmptyState
           icon={Tag01Icon}

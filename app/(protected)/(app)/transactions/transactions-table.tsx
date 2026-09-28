@@ -15,11 +15,13 @@ export function TransactionsTable({
   initialTransactions,
   total,
   filters,
+  canManage,
   pageSize = TRANSACTIONS_PAGE_SIZE,
 }: {
   initialTransactions: SpaceTransaction[];
   total: number;
   filters: TransactionFilterValues;
+  canManage: boolean;
   pageSize?: number;
 }) {
   const [seed, setSeed] = React.useState(initialTransactions);
@@ -45,7 +47,7 @@ export function TransactionsTable({
 
   return (
     <div className="flex w-full min-w-0 max-w-full flex-col gap-4">
-      <TransactionsView transactions={rows} />
+      <TransactionsView transactions={rows} canManage={canManage} />
 
       <div className="flex flex-col items-center gap-2">
         {rows.length < total ? (

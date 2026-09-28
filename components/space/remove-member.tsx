@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { notFound, useRouter } from "next/navigation";
-import { deleteSpace } from "@/app/actions/space";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,10 +36,17 @@ export function RemoveSpaceMember({
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
 
+  const isSelf = spaceMember.Profile.id === space.viewerProfileId;
+
   const handleDelete = () =>
     startTransition(async () => {
       await removeSpaceMember(spaceMember.id);
       setOpen(false);
+
+      if (isSelf) {
+        router.push("/");
+      }
+
       router.refresh();
     });
 
@@ -57,14 +63,14 @@ export function RemoveSpaceMember({
       <AlertDialogContent size="default">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Remover {spaceMember.Profile.name} do espaço{" "}
+            {isSelf ? "Sair do espaço " : `Remover ${spaceMember.Profile.name} do espaço `}
             <span className="text-lime-600 font-medium">{space.name}</span>?
           </AlertDialogTitle>
 
           <AlertDialogDescription>
-            {spaceMember.Profile.name} perderá acesso a contas, cartões e
-            transações deste espaço. Isso não afeta seus dados em outros
-            espaços.
+            {isSelf ? "Você" : spaceMember.Profile.name} perderá acesso a
+            contas, cartões e transações deste espaço. Isso não afeta seus dados
+            em outros espaços.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -80,6 +86,8 @@ export function RemoveSpaceMember({
               <div className="animate-spin">
                 <HugeiconsIcon icon={Loading03Icon} />
               </div>
+            ) : isSelf ? (
+              "Sair"
             ) : (
               "Remover"
             )}

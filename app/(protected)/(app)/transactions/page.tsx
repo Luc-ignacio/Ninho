@@ -79,6 +79,7 @@ export default async function TransactionsPage({
               initialTransactions={transactions}
               total={total}
               filters={filters}
+              canManage={space.canManage}
             />
           ) : (
             <EmptyState

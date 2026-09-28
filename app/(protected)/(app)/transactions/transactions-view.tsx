@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import type { SpaceTransaction } from "@/lib/space/queries";
@@ -10,12 +12,18 @@ import {
 } from "@/lib/utils";
 import {
   accountLabel,
-  columns,
+  createTransactionColumns,
   TransactionActions,
   TransactionAmount,
 } from "./columns";
 
-function TransactionCard({ transaction }: { transaction: SpaceTransaction }) {
+function TransactionCard({
+  transaction,
+  canManage,
+}: {
+  transaction: SpaceTransaction;
+  canManage: boolean;
+}) {
   const { installmentNumber, installmentTotal, Category, Profile } =
     transaction;
 
@@ -42,7 +50,7 @@ function TransactionCard({ transaction }: { transaction: SpaceTransaction }) {
 
         <div className="flex shrink-0 flex-col items-end gap-1">
           <TransactionAmount transaction={transaction} />
-          <TransactionActions transaction={transaction} />
+          {canManage && <TransactionActions transaction={transaction} />}
         </div>
       </div>
 
@@ -76,14 +84,25 @@ function TransactionCard({ transaction }: { transaction: SpaceTransaction }) {
 
 export function TransactionsView({
   transactions,
+  canManage,
 }: {
   transactions: SpaceTransaction[];
+  canManage: boolean;
 }) {
+  const columns = React.useMemo(
+    () => createTransactionColumns(canManage),
+    [canManage],
+  );
+
   return (
     <>
       <div className="flex flex-col gap-3 md:hidden">
         {transactions.map((transaction) => (
-          <TransactionCard key={transaction.id} transaction={transaction} />
+          <TransactionCard
+            key={transaction.id}
+            transaction={transaction}
+            canManage={canManage}
+          />
         ))}
       </div>
 

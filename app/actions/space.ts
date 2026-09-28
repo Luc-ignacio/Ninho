@@ -4,8 +4,9 @@ import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import prisma from "@/lib/prisma";
 import { ACTIVE_SPACE_COOKIE } from "@/lib/space/get-active-space";
 import { getSpacesByProfile } from "@/lib/space/queries";
+import { requireSpaceOwner, requireSpaceWriter } from "@/lib/space/space-access";
+import { addTemplateCategories } from "@/lib/space/template-categories";
 import { cookies } from "next/headers";
-import { addTemplateCategories } from "./category";
 
 export async function createSpace(name: string) {
   return await prisma.$transaction(async (tx) => {
@@ -18,6 +19,11 @@ export async function createSpace(name: string) {
     const existing = await tx.space.findFirst({
       where: {
         name,
+        Members: {
+          some: {
+            profileId: profile.id,
+          },
+        },
       },
     });
 
@@ -71,43 +77,34 @@ export async function setActiveSpace(spaceId: string) {
 }
 
 export async function deleteSpace(spaceId: string) {
-  const profile = await getActiveProfile();
-  if (!profile) throw new Error("Perfil não encontrado");
+  const space = await requireSpaceOwner();
 
-  return await prisma.$transaction(async (tx) => {
-    const isOwner = await tx.spaceMember.findUnique({
-      where: {
-        spaceId_profileId: {
-          spaceId,
-          profileId: profile.id,
-        },
-        role: "OWNER",
-      },
-    });
+  if (space.id !== spaceId) {
+    throw new Error("Espaço não encontrado");
+  }
 
-    if (!isOwner) {
-      throw new Error("Only the owner can delete a space.");
-    }
-
-    return await tx.space.delete({
-      where: {
-        id: spaceId,
-      },
-    });
+  return await prisma.space.delete({
+    where: {
+      id: space.id,
+    },
   });
 }
 
-export async function renameSpace(spaceId: string, name: string) {
+export async function renameSpace(name: string) {
+  const space = await requireSpaceWriter();
+
   return await prisma.$transaction(async (tx) => {
-    const profile = await getActiveProfile();
-
-    if (!profile) {
-      throw new Error("Perfil não encontrado");
-    }
-
     const existing = await tx.space.findFirst({
       where: {
         name,
+        id: {
+          not: space.id,
+        },
+        Members: {
+          some: {
+            profileId: space.viewerProfileId,
+          },
+        },
       },
     });
 
@@ -115,15 +112,13 @@ export async function renameSpace(spaceId: string, name: string) {
       throw new Error("Você já tem um espaço com esse nome.");
     }
 
-    const space = await tx.space.update({
+    return await tx.space.update({
       where: {
-        id: spaceId,
+        id: space.id,
       },
       data: {
         name,
       },
     });
-
-    return space;
   });
 }

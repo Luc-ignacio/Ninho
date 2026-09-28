@@ -38,6 +38,10 @@ export function AddSpaceCategory({
     notFound();
   }
 
+  if (!space.canManage) {
+    return null;
+  }
+
   const resetForm = () => {
     setCategory("");
     setError(null);
@@ -49,7 +53,7 @@ export function AddSpaceCategory({
     setError(null);
 
     try {
-      const spaceCategory = await addSpaceCategory(space.id, category);
+      const spaceCategory = await addSpaceCategory(category);
 
       if (spaceCategory) {
         resetForm();

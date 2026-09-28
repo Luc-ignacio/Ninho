@@ -1,12 +1,11 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { getActiveSpace } from "@/lib/space/get-active-space";
+import { requireSpaceWriter } from "@/lib/space/space-access";
 import { centsToDecimal, ymdToUtcDate } from "@/lib/utils";
 import { AccountType, CurrencyType } from "../generated/prisma/enums";
 
 interface AccountData {
-  spaceId: string;
   profileId: string | null;
   name: string;
   type: AccountType;
@@ -14,9 +13,18 @@ interface AccountData {
 }
 
 export async function addSpaceAccount(accountData: AccountData) {
+  const space = await requireSpaceWriter();
+
+  if (
+    accountData.profileId &&
+    !space.Members.some((member) => member.Profile.id === accountData.profileId)
+  ) {
+    throw new Error("Responsável não encontrado nesse espaço");
+  }
+
   return await prisma.account.create({
     data: {
-      spaceId: accountData.spaceId,
+      spaceId: space.id,
       profileId: accountData.profileId,
       name: accountData.name,
       type: accountData.type,
@@ -25,21 +33,19 @@ export async function addSpaceAccount(accountData: AccountData) {
   });
 }
 
-export async function deleteSpaceAccount(spaceId: string, accountId: string) {
+export async function deleteSpaceAccount(accountId: string) {
+  const { space, account } = await requireSpaceAccount(accountId);
+
   return await prisma.account.delete({
     where: {
-      id: accountId,
-      spaceId,
+      id: account.id,
+      spaceId: space.id,
     },
   });
 }
 
 async function requireSpaceAccount(accountId: string) {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
+  const space = await requireSpaceWriter();
 
   const account = await prisma.account.findFirst({
     where: { id: accountId, spaceId: space.id },

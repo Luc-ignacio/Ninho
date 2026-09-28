@@ -36,7 +36,7 @@ export default async function ImportsPage() {
             </span>
           </div>
 
-          <ImportWizard space={space} />
+          {space.canManage && <ImportWizard space={space} />}
         </CardContent>
       </Card>
 

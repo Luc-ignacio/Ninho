@@ -1,38 +1,16 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { Prisma } from "../generated/prisma/client";
+import { requireSpaceWriter } from "@/lib/space/space-access";
 
-const templateCategories = [
-  "Renda",
-  "Moradia",
-  "Mercado",
-  "Restaurantes",
-  "Transporte",
-  "Compras",
-  "Lazer",
-  "Educação",
-  "Saúde",
-  "Investimentos",
-  "Outros",
-];
+export async function addSpaceCategory(name: string) {
+  const space = await requireSpaceWriter();
 
-export async function addTemplateCategories(
-  tx: Prisma.TransactionClient,
-  spaceId: string,
-) {
-  return await tx.category.createMany({
-    data: templateCategories.map((name) => ({ spaceId, name })),
-    skipDuplicates: true,
-  });
-}
-
-export async function addSpaceCategory(spaceId: string, name: string) {
   return await prisma.$transaction(async (tx) => {
     const existing = await tx.category.findUnique({
       where: {
         spaceId_name: {
-          spaceId,
+          spaceId: space.id,
           name,
         },
       },
@@ -44,18 +22,20 @@ export async function addSpaceCategory(spaceId: string, name: string) {
 
     return await tx.category.create({
       data: {
-        spaceId,
+        spaceId: space.id,
         name,
       },
     });
   });
 }
 
-export async function deleteSpaceCategory(spaceId: string, categoryId: string) {
+export async function deleteSpaceCategory(categoryId: string) {
+  const space = await requireSpaceWriter();
+
   return await prisma.category.delete({
     where: {
       id: categoryId,
-      spaceId,
+      spaceId: space.id,
     },
   });
 }

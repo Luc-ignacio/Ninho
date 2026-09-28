@@ -86,14 +86,15 @@ export default async function CardPage({
               space={space}
               className="flex-1 sm:flex-none"
             />
-            {creditCard.isActive ? (
-              <>
-                <EditSpaceCreditCard space={space} creditCard={creditCard} />
-                <DeleteSpaceCreditCard creditCard={creditCard} />
-              </>
-            ) : (
-              <RestoreSpaceCreditCard creditCard={creditCard} />
-            )}
+            {space.canManage &&
+              (creditCard.isActive ? (
+                <>
+                  <EditSpaceCreditCard space={space} creditCard={creditCard} />
+                  <DeleteSpaceCreditCard creditCard={creditCard} />
+                </>
+              ) : (
+                <RestoreSpaceCreditCard creditCard={creditCard} />
+              ))}
           </>
         }
       />
@@ -192,6 +193,7 @@ export default async function CardPage({
                 ...emptyTransactionFilters,
                 creditCardId: creditCard.id,
               }}
+              canManage={space.canManage}
               pageSize={ACCOUNT_TRANSACTIONS_PAGE_SIZE}
             />
           ) : (

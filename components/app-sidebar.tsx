@@ -37,11 +37,13 @@ import { Separator } from "./ui/separator";
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   spaces: ProfileSpace[];
   activeSpaceId?: string;
+  canManage?: boolean;
 };
 
 export function AppSidebar({
   spaces,
   activeSpaceId,
+  canManage = false,
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname();
@@ -112,13 +114,17 @@ export function AppSidebar({
             isActive: checkIsActive("/members"),
             items: [],
           },
-          {
-            title: "Configurações",
-            url: "/settings",
-            icon: <HugeiconsIcon icon={Settings02Icon} />,
-            isActive: checkIsActive("/settings"),
-            items: [],
-          },
+          ...(canManage
+            ? [
+                {
+                  title: "Configurações",
+                  url: "/settings",
+                  icon: <HugeiconsIcon icon={Settings02Icon} />,
+                  isActive: checkIsActive("/settings"),
+                  items: [],
+                },
+              ]
+            : []),
         ],
       },
     ],

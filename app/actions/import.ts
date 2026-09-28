@@ -7,7 +7,7 @@ import {
 } from "@/app/generated/prisma/enums";
 import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import prisma from "@/lib/prisma";
-import { getActiveSpace } from "@/lib/space/get-active-space";
+import { requireSpaceWriter } from "@/lib/space/space-access";
 import {
   getSpaceCategoryHistory,
   getSpaceImportDedupeIndex,
@@ -114,17 +114,7 @@ export interface CommitImportResult {
   balanceYmd: string | null;
 }
 
-type ResolvedSpace = NonNullable<Awaited<ReturnType<typeof getActiveSpace>>>;
-
-async function requireSpace() {
-  const space = await getActiveSpace();
-
-  if (!space) {
-    throw new Error("Espaço não encontrado");
-  }
-
-  return space;
-}
+type ResolvedSpace = Awaited<ReturnType<typeof requireSpaceWriter>>;
 
 function resolveTarget(
   space: ResolvedSpace,
@@ -179,7 +169,7 @@ function isValidYmd(value: string) {
 export async function previewImport(
   input: PreviewImportInput,
 ): Promise<PreviewImportResult> {
-  const space = await requireSpace();
+  const space = await requireSpaceWriter();
 
   const fileName = input.fileName?.trim() ?? "";
 
@@ -361,7 +351,7 @@ export async function previewImport(
 export async function commitImport(
   input: CommitImportInput,
 ): Promise<CommitImportResult> {
-  const space = await requireSpace();
+  const space = await requireSpaceWriter();
   const profile = await getActiveProfile();
 
   if (!Object.values(ImportType).includes(input.type)) {

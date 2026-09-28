@@ -35,7 +35,7 @@ function CategoryActions({ category }: { category: SpaceCategory }) {
 
   const handleDelete = () =>
     startTransition(async () => {
-      await deleteSpaceCategory(category.spaceId, category.id);
+      await deleteSpaceCategory(category.id);
       setOpen(false);
       router.refresh();
     });
@@ -82,16 +82,18 @@ function CategoryActions({ category }: { category: SpaceCategory }) {
 
 const columnHelper = createColumnHelper<DataTableFeatures, SpaceCategory>();
 
-export const columns = columnHelper.columns([
-  columnHelper.accessor("name", {
-    header: "Categoria",
-  }),
-  columnHelper.accessor("_count.Transactions", {
-    id: "transactions",
-    header: "Transações",
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: ({ row }) => <CategoryActions category={row.original} />,
-  }),
-]);
+export const createCategoryColumns = (canManage: boolean) =>
+  columnHelper.columns([
+    columnHelper.accessor("name", {
+      header: "Categoria",
+    }),
+    columnHelper.accessor("_count.Transactions", {
+      id: "transactions",
+      header: "Transações",
+    }),
+    columnHelper.display({
+      id: "actions",
+      cell: ({ row }) =>
+        canManage ? <CategoryActions category={row.original} /> : null,
+    }),
+  ]);

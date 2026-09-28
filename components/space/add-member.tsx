@@ -50,6 +50,10 @@ export function AddSpaceMember({
     notFound();
   }
 
+  if (!space.canManage) {
+    return null;
+  }
+
   const RoleOptions: { value: SpaceRole; label: string }[] = [
     { value: "ADMIN", label: "Administrador" },
     { value: "MEMBER", label: "Membro" },

@@ -72,7 +72,7 @@ export default async function AccountPage({
               defaultAccountId={account.id}
               className="flex-1 sm:flex-none"
             />
-            <DeleteSpaceAccount account={account} />
+            {space.canManage && <DeleteSpaceAccount account={account} />}
           </>
         }
       />
@@ -93,7 +93,7 @@ export default async function AccountPage({
                     : "Somado a partir de todos os lançamentos da conta"}
                 </ItemDescription>
 
-                <AdjustAccountBalance account={account} />
+                {space.canManage && <AdjustAccountBalance account={account} />}
               </div>
             </ItemContent>
           </Item>
@@ -145,6 +145,7 @@ export default async function AccountPage({
               initialTransactions={transactions}
               total={total}
               filters={{ ...emptyTransactionFilters, accountId: account.id }}
+              canManage={space.canManage}
               pageSize={ACCOUNT_TRANSACTIONS_PAGE_SIZE}
             />
           ) : (

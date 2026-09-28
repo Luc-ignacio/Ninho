@@ -137,80 +137,82 @@ export function TransactionAmount({
 
 const columnHelper = createColumnHelper<DataTableFeatures, SpaceTransaction>();
 
-export const columns = columnHelper.columns([
-  columnHelper.accessor("date", {
-    header: "Data",
-    cell: ({ getValue }) => formatYmd(getValue()),
-  }),
-  columnHelper.accessor("description", {
-    header: "Descrição",
-    cell: ({ row, getValue }) => {
-      const { installmentNumber, installmentTotal } = row.original;
-      const description = getValue();
+export const createTransactionColumns = (canManage: boolean) =>
+  columnHelper.columns([
+    columnHelper.accessor("date", {
+      header: "Data",
+      cell: ({ getValue }) => formatYmd(getValue()),
+    }),
+    columnHelper.accessor("description", {
+      header: "Descrição",
+      cell: ({ row, getValue }) => {
+        const { installmentNumber, installmentTotal } = row.original;
+        const description = getValue();
 
-      return (
-        <div className="flex max-w-[22ch] items-center gap-2 whitespace-normal xl:max-w-[36ch]">
-          <span className="line-clamp-3 wrap-break-word" title={description}>
-            {description}
-          </span>
+        return (
+          <div className="flex max-w-[22ch] items-center gap-2 whitespace-normal xl:max-w-[36ch]">
+            <span className="line-clamp-3 wrap-break-word" title={description}>
+              {description}
+            </span>
 
-          {installmentTotal && (
-            <Badge variant="outline" className="shrink-0 text-olive-600">
-              {installmentNumber}/{installmentTotal}
-            </Badge>
-          )}
-        </div>
-      );
-    },
-  }),
-  columnHelper.accessor("type", {
-    header: "Tipo",
-    cell: ({ getValue }) => (
-      <Badge variant="secondary">{transactionTypeLabel[getValue()]}</Badge>
-    ),
-  }),
-  columnHelper.accessor((row) => row.Category?.name ?? "—", {
-    id: "category",
-    header: "Categoria",
-  }),
-  columnHelper.accessor(accountLabel, {
-    id: "account",
-    header: "Conta/Cartão",
-    cell: ({ row }) => {
-      const { OriginAccount, DestinationAccount, CreditCard } = row.original;
+            {installmentTotal && (
+              <Badge variant="outline" className="shrink-0 text-olive-600">
+                {installmentNumber}/{installmentTotal}
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor("type", {
+      header: "Tipo",
+      cell: ({ getValue }) => (
+        <Badge variant="secondary">{transactionTypeLabel[getValue()]}</Badge>
+      ),
+    }),
+    columnHelper.accessor((row) => row.Category?.name ?? "—", {
+      id: "category",
+      header: "Categoria",
+    }),
+    columnHelper.accessor(accountLabel, {
+      id: "account",
+      header: "Conta/Cartão",
+      cell: ({ row }) => {
+        const { OriginAccount, DestinationAccount, CreditCard } = row.original;
 
-      const [primary, secondary] =
-        OriginAccount && DestinationAccount
-          ? [OriginAccount.name, `→ ${DestinationAccount.name}`]
-          : CreditCard
-            ? [
-                CreditCard.name,
-                CreditCard.lastFour ? `•••• ${CreditCard.lastFour}` : null,
-              ]
-            : [OriginAccount?.name ?? DestinationAccount?.name ?? "—", null];
+        const [primary, secondary] =
+          OriginAccount && DestinationAccount
+            ? [OriginAccount.name, `→ ${DestinationAccount.name}`]
+            : CreditCard
+              ? [
+                  CreditCard.name,
+                  CreditCard.lastFour ? `•••• ${CreditCard.lastFour}` : null,
+                ]
+              : [OriginAccount?.name ?? DestinationAccount?.name ?? "—", null];
 
-      return (
-        <div className="flex max-w-[16ch] flex-col whitespace-normal wrap-break-word xl:max-w-[22ch]">
-          <span>{primary}</span>
-          {secondary && <span className="text-olive-600">{secondary}</span>}
-        </div>
-      );
-    },
-  }),
-  columnHelper.accessor((row) => transactionMethodLabel[row.method], {
-    id: "method",
-    header: "Forma",
-  }),
-  columnHelper.accessor((row) => row.Profile?.name ?? "—", {
-    id: "profile",
-    header: "Responsável",
-  }),
-  columnHelper.accessor("amountCents", {
-    header: "Valor",
-    cell: ({ row }) => <TransactionAmount transaction={row.original} />,
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: ({ row }) => <TransactionActions transaction={row.original} />,
-  }),
-]);
+        return (
+          <div className="flex max-w-[16ch] flex-col whitespace-normal wrap-break-word xl:max-w-[22ch]">
+            <span>{primary}</span>
+            {secondary && <span className="text-olive-600">{secondary}</span>}
+          </div>
+        );
+      },
+    }),
+    columnHelper.accessor((row) => transactionMethodLabel[row.method], {
+      id: "method",
+      header: "Forma",
+    }),
+    columnHelper.accessor((row) => row.Profile?.name ?? "—", {
+      id: "profile",
+      header: "Responsável",
+    }),
+    columnHelper.accessor("amountCents", {
+      header: "Valor",
+      cell: ({ row }) => <TransactionAmount transaction={row.original} />,
+    }),
+    columnHelper.display({
+      id: "actions",
+      cell: ({ row }) =>
+        canManage ? <TransactionActions transaction={row.original} /> : null,
+    }),
+  ]);

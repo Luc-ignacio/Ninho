@@ -1,44 +1,22 @@
 "use server";
 
 import { SpaceRole } from "@/app/generated/prisma/enums";
-import { getActiveProfile } from "@/lib/auth/get-active-profile";
 import { getProfileByEmail } from "@/lib/auth/get-profile-by-email";
 import prisma from "@/lib/prisma";
-
-async function requireSpaceManager(spaceId: string) {
-  const profile = await getActiveProfile();
-
-  if (!profile) {
-    throw new Error("Perfil não encontrado");
-  }
-
-  const membership = await prisma.spaceMember.findUnique({
-    where: {
-      spaceId_profileId: {
-        spaceId,
-        profileId: profile.id,
-      },
-    },
-    select: {
-      role: true,
-    },
-  });
-
-  if (!membership || membership.role === "MEMBER") {
-    throw new Error("Você não pode gerenciar os membros desse espaço");
-  }
-
-  return membership;
-}
+import { requireSpace, requireSpaceWriter } from "@/lib/space/space-access";
 
 export async function addSpaceMember(
   spaceId: string,
   email: string,
   role: SpaceRole,
 ) {
-  const manager = await requireSpaceManager(spaceId);
+  const space = await requireSpaceWriter();
 
-  if (role === "OWNER" && manager.role !== "OWNER") {
+  if (space.id !== spaceId) {
+    throw new Error("Espaço não encontrado");
+  }
+
+  if (role === "OWNER" && space.viewerRole !== "OWNER") {
     throw new Error("Apenas o dono do espaço pode adicionar outro dono");
   }
 
@@ -52,7 +30,7 @@ export async function addSpaceMember(
     const existingMember = await tx.spaceMember.findUnique({
       where: {
         spaceId_profileId: {
-          spaceId,
+          spaceId: space.id,
           profileId: profile.id,
         },
       },
@@ -64,7 +42,7 @@ export async function addSpaceMember(
 
     const spaceMember = await tx.spaceMember.create({
       data: {
-        spaceId,
+        spaceId: space.id,
         profileId: profile.id,
         role,
       },
@@ -75,29 +53,33 @@ export async function addSpaceMember(
 }
 
 export async function removeSpaceMember(spaceMemberId: string) {
-  const spaceMember = await prisma.spaceMember.findUnique({
-    where: {
-      id: spaceMemberId,
-    },
-    select: {
-      spaceId: true,
-      role: true,
-    },
-  });
+  const space = await requireSpace();
+
+  const spaceMember = space.Members.find(
+    (member) => member.id === spaceMemberId,
+  );
 
   if (!spaceMember) {
     throw new Error("Membro não encontrado");
   }
 
-  const manager = await requireSpaceManager(spaceMember.spaceId);
+  const isSelf = spaceMember.Profile.id === space.viewerProfileId;
 
-  if (spaceMember.role === "OWNER" && manager.role !== "OWNER") {
-    throw new Error("Apenas o dono do espaço pode remover outro dono");
+  if (spaceMember.role === "OWNER") {
+    if (isSelf) {
+      throw new Error("O dono não pode sair do próprio espaço");
+    }
+
+    if (space.viewerRole !== "OWNER") {
+      throw new Error("Apenas o dono do espaço pode remover outro dono");
+    }
+  } else if (!isSelf && !space.canManage) {
+    throw new Error("Você não pode gerenciar os membros desse espaço");
   }
 
   return await prisma.spaceMember.delete({
     where: {
-      id: spaceMemberId,
+      id: spaceMember.id,
     },
   });
 }

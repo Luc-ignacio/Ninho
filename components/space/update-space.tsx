@@ -33,7 +33,7 @@ export function UpdateSpace({ space, className }: UpdateSpaceProps) {
     setError(null);
 
     try {
-      const updatedSpace = await renameSpace(space.id, newName);
+      const updatedSpace = await renameSpace(newName);
 
       if (updatedSpace) {
         setNewName(updatedSpace.name);

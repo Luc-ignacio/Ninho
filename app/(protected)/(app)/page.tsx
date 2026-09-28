@@ -385,7 +385,10 @@ export default async function DashboardPage() {
         <h2 className="font-bold">Transações recentes</h2>
 
         {recent.transactions.length > 0 ? (
-          <TransactionsView transactions={recent.transactions} />
+          <TransactionsView
+            transactions={recent.transactions}
+            canManage={space.canManage}
+          />
         ) : (
           <EmptyState
             icon={TransactionIcon}

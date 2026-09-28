@@ -62,6 +62,10 @@ export function AddSpaceCreditCard({
     notFound();
   }
 
+  if (!space.canManage) {
+    return null;
+  }
+
   const account = space.Accounts.find((a) => a.id === accountId);
   const currency: CurrencyType = account?.currency ?? "BRL";
 

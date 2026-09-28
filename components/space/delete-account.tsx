@@ -30,7 +30,7 @@ export function DeleteSpaceAccount({
 
   const handleDelete = () =>
     startTransition(async () => {
-      await deleteSpaceAccount(account.spaceId, account.id);
+      await deleteSpaceAccount(account.id);
       router.push("/accounts");
       router.refresh();
     });
